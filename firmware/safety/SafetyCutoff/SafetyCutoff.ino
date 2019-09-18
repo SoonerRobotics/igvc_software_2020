@@ -9,6 +9,7 @@
 #include <SPI.h>
 #include <RH_RF95.h>
 
+#include "credentials.h"
 
 /* for feather m0 RFM9x    */
     #define RFM95_CS 8
@@ -29,6 +30,8 @@ void setup()
     pinMode(LED, OUTPUT);
     pinMode(RFM95_RST, OUTPUT);
     digitalWrite(RFM95_RST, HIGH);
+
+    Serial.begin(115200);
     delay(100);
 
     // manual reset
@@ -63,17 +66,36 @@ void loop()
 
         if (rf95.recv(buf, &len))
         {
-            digitalWrite(LED, HIGH);
+            // Print received data
+            Serial.println((char *)buf);
+
+            if(strcmp(buf, ROBOT_PASSWORD) == 0)
+            {
+                digitalWrite(LED, HIGH);
+
+                // Send acknowledgement
+                uint8_t data[] = "ACK";
+                rf95.send(data, sizeof(data));
+                rf95.waitPacketSent();
+            }
+            else
+            {
+                // Send a not-acknowledgement
+                uint8_t data[] = "NACK";
+                rf95.send(data, sizeof(data));
+                rf95.waitPacketSent();
+            }
+            
+            
+            /*
             RH_RF95::printBuffer("Received: ", buf, len);
             Serial.print("Got: ");
             Serial.println((char *)buf);
             Serial.print("RSSI: ");
-            Serial.println(rf95.lastRssi(), DEC);
+            Serial.println(rf95.lastRssi(), DEC); */
 
             // Send a reply
-            uint8_t data[] = "ACK";
-            rf95.send(data, sizeof(data));
-            rf95.waitPacketSent();
+            
         }
         else
         {
