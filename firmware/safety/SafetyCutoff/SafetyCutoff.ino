@@ -22,9 +22,13 @@
 // Singleton instance of the radio driver
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
 
-// Blinky on receipt
+// If the robot should be stopped, turn on this LED
 #define LED 12
 
+
+/**
+ * Setup the device
+ */
 void setup()
 {
     pinMode(LED, OUTPUT);
@@ -56,20 +60,26 @@ void setup()
 }
 
 
+/**
+ * Watchdog for the emergency stop and other messages
+ */
 void loop()
 {
+    // If there is any data available on the buffer
     if (rf95.available())
     {
         // Should be a message for us now
         uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
         uint8_t len = sizeof(buf);
 
+        // Receive the data packet
         if (rf95.recv(buf, &len))
         {
-            // Print received data
-            Serial.println((char *)buf);
+            // Convert packet to character array to determine message contents
+            char* msg = (char *)buf;
 
-            if(strcmp(buf, ROBOT_PASSWORD) == 0)
+            // If the package is the password, emergency stop the robot
+            if(strcmp(ROBOT_PASSWORD, msg) == 0)
             {
                 digitalWrite(LED, HIGH);
 
@@ -78,25 +88,17 @@ void loop()
                 rf95.send(data, sizeof(data));
                 rf95.waitPacketSent();
             }
+            // Otherwise, reject the message
             else
             {
                 // Send a not-acknowledgement
                 uint8_t data[] = "NACK";
                 rf95.send(data, sizeof(data));
                 rf95.waitPacketSent();
-            }
-            
-            
-            /*
-            RH_RF95::printBuffer("Received: ", buf, len);
-            Serial.print("Got: ");
-            Serial.println((char *)buf);
-            Serial.print("RSSI: ");
-            Serial.println(rf95.lastRssi(), DEC); */
-
-            // Send a reply
-            
+            }            
         }
+        // Receive failure, notify user
+        // TODO: put an LED on this
         else
         {
             Serial.println("Receive failed");
