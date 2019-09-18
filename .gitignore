@@ -53,3 +53,6 @@ CATKIN_IGNORE
 
 # SCR custom
 .vscode/
+
+# Ignore credentials file
+credentials.h
