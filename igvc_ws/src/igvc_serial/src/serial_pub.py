@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
-#import rospy
-#from igvc_msgs.msg import serial_motion_msg
+import rospy
+from igvc_msgs.msg import serial_motion_msg
 import serial
 import json
 
