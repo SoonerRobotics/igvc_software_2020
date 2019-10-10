@@ -12,9 +12,9 @@ int main()
 {
     pc.baud(9600);
     wait(0.01);
-    
+        
     StaticJsonDocument<256> doc;
-
+    
     while (1) {
         char rawJson[256];
         if (pc.readable()) {
@@ -23,15 +23,17 @@ int main()
 
             if (!err) {
                 
+                const char* message = doc["igvc"];
+                
+                if (strcmp(message, "yo") == 0) {
+                    pc.printf("{\"id\":\"motors\"}\n");
+                }
+                
                 float motorLeftInstruction = doc["motorLeft"];
                 float motorRightInstruction = doc["motorRight"];
                 
                 motorLeft = motorLeftInstruction;
                 motorRight = motorRightInstruction;
-                
-                pc.printf("OK %f %f\n\r", motorLeftInstruction, motorRightInstruction);
-            } else {
-                pc.printf("{\"result\":\"ERR\"}\n\r");
             }
         }
     }

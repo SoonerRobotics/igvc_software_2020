@@ -4,9 +4,10 @@ import rospy
 import json
 import serial
 import os
+import re
 from igvc_msgs.msg import motors
 
-serials = []
+serials = {}
 
 def motors_out(data):
     motion_pkt = {
@@ -16,25 +17,17 @@ def motors_out(data):
 
     json_dump = json.dumps(motion_pkt)
 
-    for s in serials:
-        s.write(json_dump)
-
-    rospy.loginfo("Left speed: %f, Right speed: %f, \n", data.left, data.right)
+    serials["motor"].write(json_dump)
 
 def serial_out():
     rospy.init_node("serial_out", anonymous = True)
     rospy.Subscriber("/igvc/motors_raw", motors, motors_out)
 
-    # TODO: Send hello packet to figure out what device they are
-    for i in range(10):
-        if os.path.exists('/dev/igvc-nucleo-' + str(i)):
-            s = serial.Serial(port = '/dev/igvc-nucleo-' + str(i), baudrate = 9600)
-            serials.append(s)
+    # TODO: Create a map from device name (motor) to /dev/ name (/dev/igvc-nucleo-x)
+    # TODO: Use map to check if any devices are not plugged in
+    serials["motor"] = serial.Serial(port = '/dev/igvc-nucleo-120', baudrate = 9600, timeout = 1)
 
-    rospy.loginfo("%d serial devices found!", len(serials))
-
-    if len(serials) > 0:
-        rospy.spin()
+    rospy.spin()
 
 if __name__ == '__main__':
     try:
