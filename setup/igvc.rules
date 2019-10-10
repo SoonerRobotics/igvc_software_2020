@@ -1,1 +1,2 @@
-KERNEL=="ttyACM*", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="374b", MODE:="0666", GROUP:="dialout", SYMLINK+="igvc-nucleo-%n"
+KERNEL=="ttyACM*", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="374b", ENV{ID_SERIAL_SHORT}=="0671FF575256716587244120", MODE:="0666", GROUP:="dialout", SYMLINK+="igvc-nucleo-120"
+KERNEL=="ttyACM*", ATTRS{idVendor}=="0483", ATTRS{idProduct}=="374b", ENV{ID_SERIAL_SHORT}=="066BFF575256716587252452", MODE:="0666", GROUP:="dialout", SYMLINK+="igvc-nucleo-452"
