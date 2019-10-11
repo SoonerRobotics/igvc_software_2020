@@ -1,28 +1,33 @@
 #include <ros/ros.h>
+#include <nav_msgs/OccupancyGrid>
 #include "std_msgs/String.h"
 #include "sensor_msgs/LaserScan.h"
-#include "roma_msgs/obstacles.h"
 
-ros::Publisher motion_pub;
+ros::Publisher map_pub;
 //CONSTANTS
-#define MAX_DISTANCE 5 //Max distance of 8 meters
-#define OBS_DST_DELTA 0.5
+#define MAX_DISTANCE 10 // Max distance of 10 meters
+#define RESOLUTION 0.25 // Resolution of map (meters)
 
-struct Obstacle{
+struct Obstacle
+{
+  // Polar (Native from LiDAR)
   float angle;
   float distance;
+  // Cartesian (For map grid)
+  float x;
+  float y;
 };
 
 /**
- * @brief 
- * 
- * @param msg 
+ * @brief
+ *
+ * @param msg
  */
 void onLidarCallback(const sensor_msgs::LaserScan::ConstPtr& msg) {
   //Instantiate message to publish to
-  roma_msgs::obstacles ob_msg;
+  nav_msgs::OccupancyGrid map_msg;
   //Instantiate variables for obstacle detection
-  std::vector<Obstacle> obs;
+  std::vector<Obstacle> obstacles;
   std::vector<float> ranges = msg->ranges;
   bool obstacle_detected = false;
   Obstacle ob;
@@ -30,11 +35,11 @@ void onLidarCallback(const sensor_msgs::LaserScan::ConstPtr& msg) {
   /************************************************************************************************\
    * Currently this for loop goes through the vector of ranges and checks for obstacles. When an
    * obstacle is detected the closest distance of the object is updated and the angle is updated to
-   * the corresponding indice of this closest distance divided by two, which corresponds to the 
-   * correct angle. The angles increment upwards counterclockwise. If the object varies by more than 
-   * +/- 0.5 meters, then we treat this as a new obstacle.
+   * the corresponding indice of this closest distance divided by two, which corresponds to the
+   * correct angle. The angles increment upwards counterclockwise. If the object varies by more than
+   * +/- 0.25 meters, then we treat this as a new obstacle.
    \************************************************************************************************/
-  for (int i=0; i < ranges.size(); i++) 
+  for (int i=0; i < ranges.size(); i++)
   {
     //If an object is detected and hasn't already been initialized
     if (ranges[i] > 0 && ranges[i] <= MAX_DISTANCE && !obstacle_detected) {
@@ -60,9 +65,9 @@ void onLidarCallback(const sensor_msgs::LaserScan::ConstPtr& msg) {
         //Begin the new object
         ob.angle = i/2.0;
         ob.distance = ranges[i];
-      } 
+      }
     }
-    //If an object that was initialized is no longer detected 
+    //If an object that was initialized is no longer detected
     else if((ranges[i] == 0 || ranges[i] > MAX_DISTANCE) && obstacle_detected)
     {
       //Update boolean and push the object to the vector
@@ -78,25 +83,25 @@ void onLidarCallback(const sensor_msgs::LaserScan::ConstPtr& msg) {
   }
 
   //Publish message data to the topic
-  motion_pub.publish(ob_msg);
+  map_pub.publish(ob_msg);
 }
 
 /**
- * @brief 
- * 
- * @param argc 
- * @param argv 
- * @return int 
+ * @brief
+ *
+ * @param argc
+ * @param argv
+ * @return int
  */
-int main(int argc, char** argv) 
+int main(int argc, char** argv)
 {
   //Initialize the node
-  ros::init(argc, argv, "obstacle_avoidance_node");
+  ros::init(argc, argv, "lidar_map_node");
   //Set up node
-  ros::NodeHandle obstacle_node;
-  //Create the publisher for the obstacle message
-  motion_pub = obstacle_node.advertise<roma_msgs::obstacles>(obstacle_node.resolveName("/roma_vision/motion"), 10);
-  //Create the subscribers
+  ros::NodeHandle lidar_map_node;
+  //Create the publisher for the map
+  map_pub = lidar_map_node.advertise<nav_msgs::OccupancyGrid>(obstacle_node.resolveName("/igvc_vision/map"), 10);
+  //Create the subscriber for the LiDAR
   ros::Subscriber lidar = obstacle_node.subscribe(obstacle_node.resolveName("/scan"), 10, onLidarCallback);
   //Automatically handles callbacks
   ros::spin();
