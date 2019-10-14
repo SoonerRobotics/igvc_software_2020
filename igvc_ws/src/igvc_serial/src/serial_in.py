@@ -17,7 +17,7 @@ def serial_out():
     serials["motor"] = serial.Serial(port = '/dev/igvc-nucleo-120', baudrate = 9600, timeout = 1)
 
     while True:
-        line = serials[0].readline()
+        line = serials["motor"].readline()
         pubber.publish(line)
             
 

@@ -19,7 +19,7 @@ def manual_control_callback(data):
     drivetrain_msg.left = axes[1]
     drivetrain_msg.right = axes[4]
 
-    rospy.loginfo("manual_control callback.")
+    # rospy.loginfo("manual_control callback.")
     manual_control_pub.publish(drivetrain_msg)
 
 def manual_control_node():
