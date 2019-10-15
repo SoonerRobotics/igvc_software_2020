@@ -28,7 +28,7 @@ def serial_out():
 
     # TODO: Create a map from device name (motor) to /dev/ name (/dev/igvc-nucleo-x)
     # TODO: Use map to check if any devices are not plugged in
-    serials["motor"] = serial.Serial(port = '/dev/igvc-nucleo-120', baudrate = 115200)
+    serials["motor"] = serial.Serial(port = '/dev/igvc-nucleo-319', baudrate = 115200)
 
     rospy.spin()
 
