@@ -11,13 +11,14 @@ class IGVCMotor {
         void output(float speed) {
             if (speed < 0.05f) {
                 setEnabled(0);
+                pwmPin->write(0);
+            if (speed <= 1.0f) {
+                setEnabled(1);
+                pwmPin->write(speed);
             } else {
                 setEnabled(1);
+                pwmPin->write(1);
             }
-            if (speed > 1) {
-                speed = 1;
-            }
-            pwmPin->write(speed);
         }
         
         void setEnabled(int enabled) {

@@ -14,20 +14,22 @@ class SerialReadThread(threading.Thread):
         threading.Thread.__init__(self)
 
         self.serial_obj = serial_obj
+
+        # Allow timeout of up to 1 second on reads. This could be set to None to have infinite timeout,
+        # but that would hault the node when it tries to exit. Need to make sure the while loop condition is
+        # semi-regularly checked. This is better than rospy.Rate because it will continously wait for new message
+        # instead of only checking on a fixed interval.
+        self.serial_obj.timeout = 1
+
+        # Assumes String type for now. This class will need to be adapted in the future for different message types.
         self.publisher = rospy.Publisher(topic, String, queue_size=10)
 
     def run(self):
-        # TODO: Is it good to use rospy.Rate here? Or should we just add a timeout
-        # to the Serial object and wait on that?
-        r = rospy.Rate(10)
-
         while not rospy.is_shutdown():
-            line = self.serial_obj.readline()
+            line = self.serial_obj.readline() # Assume all messages end in newline character. This is standard among SCR IGVC serial messages.
 
             if line:
                 self.publisher.publish(line)
-
-            r.sleep()
 
 
 def motors_out(data):
