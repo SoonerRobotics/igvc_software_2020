@@ -7,7 +7,7 @@
 ros::Publisher map_pub;
 //CONSTANTS
 #define MAX_DISTANCE 10 // Max distance of 10 meters
-#define RESOLUTION 0.25 // Resolution of map (meters)
+#define RESOLUTION 0.1  // Resolution of map (meters)
 #define LIDAR_POS 100   // Row and Col indices for LiDAR
 
 
@@ -34,8 +34,8 @@ void onLidarCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
       float x = ranges[i] * cos(i/2.0);
       float y = ranges[i] * sin(i/2.0);
       // Convert to number of indices away from LiDAR
-      int row = round(x/0.1);
-      int col = round(y/0.1);
+      int row = round(x/RESOLUTION);
+      int col = round(y/RESOLUTION);
       // Save value to save on text
       int cur_val = map_data->data[LIDAR_POS - row, LIDAR_POS - col];
       // If the indice already has an obstacle, increment "certainty"
