@@ -1,4 +1,5 @@
 #include <ros/ros.h>
+#include <math.h>
 #include <nav_msgs/OccupancyGrid>
 #include "std_msgs/String.h"
 #include "sensor_msgs/LaserScan.h"
@@ -7,6 +8,7 @@ ros::Publisher map_pub;
 //CONSTANTS
 #define MAX_DISTANCE 10 // Max distance of 10 meters
 #define RESOLUTION 0.25 // Resolution of map (meters)
+#define LIDAR_POS 100   // Row and Col indices for LiDAR
 
 
 /**
@@ -17,7 +19,7 @@ ros::Publisher map_pub;
 void onLidarCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
 {
   //Instantiate message to publish to
-  nav_msgs::OccupancyGrid map_msg;
+  nav_msgs::OccupancyGrid map_data;
   //Instantiate variables for obstacle detection
   float angle;
   float distance;
@@ -28,14 +30,32 @@ void onLidarCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
     // If something is detected within range
     if (ranges[i] > 0 && ranges[i] <= MAX_DISTANCE) 
     {
-      // TODO: Convert polar coordinates provided from LiDAR to cartesian and occupy map
-      angle = i/2.0;
-      distance = ranges[i];
+      // Get cartesian coordinates
+      float x = ranges[i] * cos(i/2.0);
+      float y = ranges[i] * sin(i/2.0);
+      // Convert to number of indices away from LiDAR
+      int row = round(x/0.1);
+      int col = round(y/0.1);
+      // Save value to save on text
+      int cur_val = map_data->data[LIDAR_POS - row, LIDAR_POS - col];
+      // If the indice already has an obstacle, increment "certainty"
+      if(cur_val > 0 && cur_val < 100)
+        map_data->data[LIDAR_POS - row, LIDAR_POS - col] += 1;
+      else if(cur_val != 100)
+        map_data->data[LIDAR_POS - row, LIDAR_POS - col] = 1;
     }
   }
-
+  // Set anything in the occupancy grid without a value to 0
+  for(int row = 0; row < 200; ++row)
+  {
+    for(int col = 0; col < 200; ++col)
+    {
+      if(map_data->data[row, col] > 0 && map_data->data[row, col] <= 100)
+        map_data->data[row, col] = 0;
+    }
+  }
   // Publish message data to the topic
-  map_pub.publish(map_msh);
+  map_pub.publish(map_data);
 }
 
 /**
