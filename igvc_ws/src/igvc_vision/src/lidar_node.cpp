@@ -1,6 +1,6 @@
 #include <ros/ros.h>
 #include <math.h>
-#include <nav_msgs/OccupancyGrid>
+#include <nav_msgs/OccupancyGrid.h>
 #include "std_msgs/String.h"
 #include "sensor_msgs/LaserScan.h"
 
