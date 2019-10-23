@@ -37,12 +37,12 @@ void onLidarCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
       int row = round(x/RESOLUTION);
       int col = round(y/RESOLUTION);
       // Save value to save on text
-      int cur_val = map_data->data[LIDAR_POS - row, LIDAR_POS - col];
+      int cur_val = map_data.data[LIDAR_POS - row, LIDAR_POS - col];
       // If the indice already has an obstacle, increment "certainty"
       if(cur_val > 0 && cur_val < 100)
-        map_data->data[LIDAR_POS - row, LIDAR_POS - col] += 1;
+        map_data.data[LIDAR_POS - row, LIDAR_POS - col] += 1;
       else if(cur_val != 100)
-        map_data->data[LIDAR_POS - row, LIDAR_POS - col] = 1;
+        map_data.data[LIDAR_POS - row, LIDAR_POS - col] = 1;
     }
   }
   // Set anything in the occupancy grid without a value to 0
@@ -50,8 +50,8 @@ void onLidarCallback(const sensor_msgs::LaserScan::ConstPtr& msg)
   {
     for(int col = 0; col < 200; ++col)
     {
-      if(map_data->data[row, col] > 0 && map_data->data[row, col] <= 100)
-        map_data->data[row, col] = 0;
+      if(map_data.data[row, col] > 0 && map_data.data[row, col] <= 100)
+        map_data.data[row, col] = 0;
     }
   }
   // Publish message data to the topic
