@@ -156,7 +156,9 @@ include_directories(
 # )
 
 # Vision
-add_executable(lidar_map_node src/lidar.cpp)
+add_executable(lidar_node src/lidar_node.cpp)
+target_link_libraries(lidar_node ${catkin_LIBRARIES})
+add_dependencies(lidar_node ${catkin_EXPORTED_TARGETS})
 
 #############
 ## Install ##
