@@ -77,7 +77,7 @@ int main(int argc, char** argv)
   //Set up node
   ros::NodeHandle lidar_map_node;
   //Create the publisher for the map
-  map_pub = lidar_map_node.advertise<nav_msgs::OccupancyGrid>(lidar_map_node.resolveName("/igvc_vision/map"), 10);
+  ros::Publisher map_pub = lidar_map_node.advertise<nav_msgs::OccupancyGrid>(lidar_map_node.resolveName("/igvc_vision/map"), 10);
   //Create the subscriber for the LiDAR
   ros::Subscriber lidar = lidar_map_node.subscribe(lidar_map_node.resolveName("/scan"), 10, onLidarCallback);
   //Automatically handles callbacks
