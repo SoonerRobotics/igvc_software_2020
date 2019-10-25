@@ -7,10 +7,11 @@ import matplotlib.image as mpimg
 from matplotlib import pyplot as plt
 import statistics
 import math
-from skimage.transform import resize
 import rospy
 from nav_msgs.msg import OccupancyGrid
 from nav_msgs.msg import MapMetaData
+from cv_bridge import CvBridge, CvBridgeError
+from sensor_msgs.msg import Image
 
 
 occupancy_grid_size = 200
@@ -19,6 +20,9 @@ scale = -1
 divider = 10
 
 grass_image = False
+
+bridge = CvBridge()
+image_pub = rospy.Publisher("/igvc/lane_map",OccupancyGrid)
 
 
 # returns a filtered image and unfiltered image. This is needed for white lines on green grass
@@ -53,7 +57,9 @@ def grass_filter(og_image):
 
 
 # takes in an image and outputs an image that has redlines overlaying the detected boundries
-def pipeline(image):
+def camera_callback(data):
+
+    image = bridge.imgmsg_to_cv2(data, desired_encoding="passthrough")
 
     # flag for seeing if you're dealing with grassy images or not
     if grass_image:
@@ -110,12 +116,8 @@ def pipeline(image):
     # takes in the returned value of the map_localization which is a 2d array
     data_map = map_localization(lines, width, height)
 
-    # # this is to display images for testing purpose
-    # plt.figure()
-    # plt.imshow(line_image)
-    # plt.show()
-
-    return data_map
+    # publishes to the node
+    numpy_to_occupancyGrid(data_map)
 
 
 # takes in an image and a list of points (vertices) to crop the image
@@ -250,14 +252,12 @@ def map_localization(lines, width, height):
     # shifts the map by 100, which is where the robot is centered at
     data_map_resized = np.roll(data_map_resized, 100, axis=0)
 
-    # shifts the map by 100, which is where the robot is centered at
-    data_map_resized = np.roll(data_map_resized, 100, axis=0)
-
     return data_map_resized
 
 
-def numpyMap_to_occupancyGrid(data_map):
+def numpy_to_occupancyGrid(data_map):
     msg = OccupancyGrid(info=MapMetaData(width=occupancy_grid_size,height=occupancy_grid_size), data = data_map)
+    image_pub.publish(msg)
 
 
 # created my own helper function to round up numbers
@@ -269,6 +269,6 @@ def round_up(n, decimals):
 if __name__ == '__main__':
     # call pipeline function which will return a data_map which is just a 2d numpy array
     # Need to subscribe to an image node for images data to use
-    data_map = pipeline()
-
-
+    rospy.Subscriber("/cv_camera/image_raw", Image, camera_callback)
+    # while true loop
+    rospy.spin()
