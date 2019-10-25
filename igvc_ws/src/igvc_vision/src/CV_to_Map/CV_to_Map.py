@@ -9,8 +9,11 @@ import statistics
 import math
 from skimage.transform import resize
 import rospy
+from nav_msgs.msg import OccupancyGrid
+from nav_msgs.msg import MapMetaData
 
-map_size = 200
+
+occupancy_grid_size = 200
 counter = 0
 scale = -1
 divider = 10
@@ -199,11 +202,13 @@ def map_localization(lines, width, height):
     # work on this ,maybe go back to what i had
     if len(x_right_list) > 0:
         x_right_list_r = list(np.array(x_right_list) / divider)
-        y_right_list_r = list(np.array(y_right_list) / divider)
+        # subtracting half the height for the occupancy grid
+        y_right_list_r = list((np.array(y_right_list) / divider) - height_r/2)
 
     if len(x_left_list) > 0:
         x_left_list_r = list(np.array(x_left_list) / divider)
-        y_left_list_r = list(np.array(y_left_list) / divider)
+        # subtracting half the height for the occupancy grid
+        y_left_list_r = list((np.array(y_left_list) / divider) - height_r/2)
 
     # creates a 2d array of 6x10 (in this particular case) (row x column)
     data_map = np.zeros(shape=(int(height_r), int(width_r)), dtype=int)
@@ -238,14 +243,21 @@ def map_localization(lines, width, height):
 
                 if int(row) + i < height_r and data_map[int(row)][int(x_left_list_avg)] == 1:
                     data_map[int(row) + i][int(x_left_list_avg)] = 1
+
     # resize the image and keeps the ratios the same to the size I want
-    data_map_resized = resize(data_map, (map_size, map_size))
+    data_map_resized = cv2.resize(data_map, dsize=(occupancy_grid_size, occupancy_grid_size), interpolation=cv2.INTER_NEAREST)
+
+    # shifts the map by 100, which is where the robot is centered at
+    data_map_resized = np.roll(data_map_resized, 100, axis=0)
+
+    # shifts the map by 100, which is where the robot is centered at
+    data_map_resized = np.roll(data_map_resized, 100, axis=0)
 
     return data_map_resized
 
 
 def numpyMap_to_occupancyGrid(data_map):
-    msg = OccupancyGrid(info=MapMetaData(width=200,height=200), data = data_map)
+    msg = OccupancyGrid(info=MapMetaData(width=occupancy_grid_size,height=occupancy_grid_size), data = data_map)
 
 
 # created my own helper function to round up numbers
