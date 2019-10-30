@@ -48,8 +48,7 @@ void onLidarCallback(const sensor_msgs::LaserScan::ConstPtr &msg)
 			float x = ranges[i] * cos(angle);
 			float y = ranges[i] * sin(angle);
 			// Convert to number of indices away from LiDAR
-			int index = (LIDAR_POS - round(x / RESOLUTION)) * DIMENSIONS + (LIDAR_POS - round(y / RESOLUTION));
-			/*
+			int index = (LIDAR_POS - round(x / RESOLUTION)) * DIMENSIONS + (LIDAR_POS + round(y / RESOLUTION));
 			// Save value to save on text
 			int cur_val = lidar_data[index];
 			// If the indice already has an obstacle, increment "certainty"
@@ -60,14 +59,15 @@ void onLidarCallback(const sensor_msgs::LaserScan::ConstPtr &msg)
 			else if (cur_val != 100)
 			{
 				lidar_data[index] = 1;
-			}*/
-			lidar_data[index] = 100;
+			}
+			//lidar_data[index] = 100;
 		}
 	}
 	// Set anything in the occupancy grid without a value to 0
 	for (int i = 0; i < DIMENSIONS * DIMENSIONS; ++i)
 	{
-		//if (lidar_data[i] > 0 && lidar_data[i] <= 100)
+		if (lidar_data[i] > 0 && lidar_data[i] <= 100)
+			lidar_data[i] = 100;
 		if (lidar_data[i] != 100)
 			lidar_data[i] = 0;
 	}
