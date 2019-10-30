@@ -4,7 +4,7 @@ Our codebase for the [IGVC 2020 Competition](http://www.igvc.org/).
 
 ## First Time Setup
 
-Please run `sudo ./setup/run.sh` the first time you clone this repository to install udev rules, etc.
+Please run `sudo ./run.sh` from within the `setup` directory the first time you clone this repository to install udev rules, etc.
 
 ## Component or System documentation
 
