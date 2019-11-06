@@ -17,7 +17,7 @@ counter = 0
 scale = -1
 divider = 10
 
-grass_image = False
+grass_image = True
 
 bridge = CvBridge()
 image_pub = rospy.Publisher("/igvc/lane_map",OccupancyGrid, queue_size=10)
