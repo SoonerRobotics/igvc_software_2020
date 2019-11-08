@@ -7,3 +7,9 @@ cp igvc.rules /etc/udev/rules.d/igvc.rules
 service udev reload
 sleep 2
 service udev restart
+
+# Install vcstool
+sudo pip install vcstool
+
+# Install dependencies
+vcs import < igvc.deps
