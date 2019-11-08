@@ -6,3 +6,7 @@ repositories:
         type: git
         url: https://github.com/YDLIDAR/ydlidar_ros
         version: master
+    ../igvc_ws/src/deps/cv_camera:
+        type: git
+        url: https://github.com/OTL/cv_camera.git
+        version: master
