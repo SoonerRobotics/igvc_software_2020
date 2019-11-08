@@ -1,0 +1,4 @@
+repositories: 
+    ../igvc_ws/src/deps/robot_localization:
+        type: git
+        url: https://github.com/cra-ros-pkg/robot_localization.git
