@@ -9,4 +9,3 @@ repositories:
     ../igvc_ws/src/deps/cv_camera:
         type: git
         url: https://github.com/OTL/cv_camera.git
-        version: master
