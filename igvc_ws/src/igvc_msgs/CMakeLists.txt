@@ -53,6 +53,7 @@ add_message_files(
   lane_error.msg
   vel.msg
   motors.msg
+  ekf_state.msg
 )
 
 ## Generate services in the 'srv' folder

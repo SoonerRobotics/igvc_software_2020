@@ -1,13 +1,30 @@
-"""
-Motion model code and simulation for kalman filter model
-"""
+import numpy as np
+
 from math import radians, degrees
 import time
 
 from sympy import sin, cos, asin, atan2, sqrt, Matrix, Symbol, eye
 from sympy.abc import theta, phi, lamda, psi, p, x, y, v, a, t, r, l
 
-from matplotlib import pyplot as plt
+class EKF:
+
+    def __init__(self, x_o):
+        # Initialize state and covariance
+        self.x_k = x_o
+        self.P_k = eye(11) * 0.8
+
+        # Initialize motion model
+        self.motion = MotionModel(self.P_k)
+
+        # Initialize measurement model
+        self.measure = MeasurementModel()
+
+    def run_filter(self, sensor_data, ctrl, dt):
+        self.x_k, self.P_k = self.motion.run_model(self.x_k, self.P_k, ctrl, dt)
+
+        return self.x_k
+
+
 
 class MotionModel:
     """
@@ -15,11 +32,11 @@ class MotionModel:
     """
 
     # Constants
-    L = 0.381           # Wheelbase length (meters)
+    L = 0.84455         # Wheelbase length (meters)
     wheel_rad = 0.127   # Wheel radius (meters)
     R = 6378137         # Earth radius (meters)
 
-    def __init__(self):
+    def __init__(self, Po):
         x = Symbol("x")
 
         # State variables
@@ -51,19 +68,22 @@ class MotionModel:
             y_k,
             psi_k,
             v_k,
+            psi_dot,
+            l,
+            r,
             a
             ])
 
-        X = Matrix([phi, lamda, theta, x, y, psi, v, a])
+        X = Matrix([phi, lamda, theta, x, y, psi, v, p, l, r, a])
 
         # IGVC Fk matrix
-        self.model = f.jacobian(X)
-        self.cov_matrix = eye(8) * 0.5
-        self.Q = eye(8) * 0.2
+        self.model = f
+        self.jac_model = f.jacobian(X)
+        self.Q = eye(11) * 0.2
 
         self.csv_data = "lat, lon\n"
 
-    def run_filter(self, last_xk, ctrl, dt):
+    def run_model(self, last_xk, P, ctrl, dt):
         last_xk_mat = Matrix(last_xk[:11])
 
         # Input dictionary setup
@@ -71,19 +91,22 @@ class MotionModel:
         input_dict['t'] = dt
         ctrl_dict = {self.ctrl_vars[i]: ctrl[i] for i in range(0, len(self.ctrl_vars))}
 
-        F = self.model.subs(input_dict).subs(ctrl_dict)
-        new_state = F * last_xk_mat
-        self.cov_matrix = (F * self.cov_matrix * F.T) + self.Q
+        F = self.jac_model.subs(input_dict).subs(ctrl_dict)
+        new_state = self.model.subs(input_dict).subs(ctrl_dict)
+        P = (F * P * F.T) + self.Q
 
         self.csv_data += str(degrees(new_state[0])) + "," + str(degrees(new_state[1])) + "\n"
 
-        return new_state
+        return (new_state, P)
 
     def get_model(self):
         return self.model
 
     def get_cov(self):
         return self.cov_matrix
+
+    def get_jac(self):
+        return self.jac_model
 
     def print_gps(self):
         print(self.gps_lat, ", ", self.gps_lon)
@@ -94,52 +117,7 @@ class MotionModel:
         csv_file.close()
 
 
+class MeasurementModel:
 
-if __name__ == "__main__":
-    motion = MotionModel()
-
-    #radians(270.95)
-    hdg = radians(180)
-    psi_k = radians(0)
-    # Drive forward simulation
-    last_xk = [
-            radians(35.210467),
-            radians(-97.441811),
-            hdg,
-            0,
-            0,
-            psi_k,
-            1,
-            0
-        ]
-    ctrl_signal = [
-        6.3,
-        6.3
-    ]
-
-    dt = 1 / 20
-    sim_time = 4
-    sim_steps = round(sim_time / dt)
-
-    points = []
-
-    start_time = time.time()
-    for _ in range(0, sim_steps):
-        last_xk = motion.run_filter(last_xk, ctrl_signal, dt)
-        points.append((last_xk[3], last_xk[4]))
-
-    end_time = time.time()
-
-    plt.scatter(*zip(*points))
-    plt.xlabel("X")
-    plt.ylabel("Y")
-    plt.title("This doesn't work")
-    plt.show()
-
-    output_dict = {motion.state_vars[i]: last_xk[i] for i in range(0, len(motion.state_vars))}
-    print(output_dict)
-    print("elapsed time:", end_time-start_time)
-    print("cov:")
-    print(motion.get_cov())
-
-    motion.export_data()
+    def __init__(self):
+        pass
