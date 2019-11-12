@@ -14,6 +14,22 @@ EKF::EKF()
     // Define the measurement noise
     this->R_k.setIdentity(11, 11);
     this->R_k *= 0.2;
+
+    // Define the measurement model
+    this->H_k.setZero(6, 11);
+    this->H_k(0,0) = 1;
+    this->H_k(1,1) = 1;
+    this->H_k(2, 8) = 0.5;
+    this->H_k(2, 9) = 0.5;
+    this->H_k(3, 10) = 1;
+    this->H_k(4, 2) = 1;
+    this->H_k(5, 5) = 1;
+
+    // Initialize the kalman gain
+    this->K_k.setZero(11, 6);
+
+    // Setup identity matrix
+    this->I.setIdentity(11, 11);
 }
 
 
@@ -42,7 +58,9 @@ Eigen::VectorXd EKF::run_filter(Eigen::VectorXd sensors, Eigen::VectorXd u_k)
     this->predict(u_k, dt);
 
     // Update from prediction
+    this->update(sensors);
 
+    // Return the new state estimate
     return this->x_k;
 }
 
@@ -165,4 +183,42 @@ void EKF::predict(Eigen::VectorXd u_k, double dt)
 
     // Update the covariance matrix
     this->P_k = (F_k * P_k * F_k.transpose()) + this->Q_k;
+}
+
+
+
+
+Eigen::VectorXd EKF::get_measurements()
+{
+    Eigen::VectorXd measurements;
+    measurements.resize(6);
+
+    measurements(0) = this->x_k(0);
+    measurements(1) = this->x_k(1);
+    measurements(2) = 0.5 * (this->x_k(8) + this->x_k(9));
+    measurements(3) = this->x_k(10);
+    measurements(4) = this->x_k(2);
+    measurements(5) = this->x_k(5);
+
+    return measurements;
+}
+
+
+
+void EKF::update(Eigen::VectorXd z_k)
+{
+    // Calculate the innovation (the difference between predicted measurements and the actual measurements)
+    Eigen::VectorXd yk = z_k - get_measurements();
+
+    // Find the covariance of the innovation
+    Eigen::MatrixXd Sk = (this->H_k * this->P_k * this->H_k.transpose()) + this->R_k;
+
+    // Compute Kalman gain
+    this->K_k = this->P_k * H_k.transpose() * Sk.inverse();
+
+    // Use the kalman gain to update the state estimate
+    this->x_k = this->x_k + this->K_k * yk;
+
+    // Likewise, update the covariance for the state estimate
+    this->P_k = (this->I - this->K_k * this->H_k) * this->P_k;
 }

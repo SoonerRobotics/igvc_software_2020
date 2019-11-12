@@ -41,12 +41,16 @@ class EKF
 
 
         // Update functions
+        Eigen::VectorXd get_measurements();
         void update(Eigen::VectorXd z_k);
 
         // Update vars
         Eigen::MatrixXd H_k;    // Sensor model
         Eigen::MatrixXd K_k;    // Kalman Gain
         Eigen::MatrixXd R_k;    // Measurement noise
+
+        // Identity matrix
+        Eigen::MatrixXd I;
 
 };
 
