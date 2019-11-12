@@ -10,7 +10,7 @@ esac
 
 # add IGVC_LOC to .bashrc and igvc_dev to PATH
 echo "" >> ~/.bashrc
-echo "PATH=\"$PWD/igvc_dev:$PATH\"" >> ~/.bashrc
+echo "PATH=\"$PWD/igvc_dev:\$PATH\"" >> ~/.bashrc
 cd ..
 echo "export IGVC_LOC=$PWD" >> ~/.bashrc
 
