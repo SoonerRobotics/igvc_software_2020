@@ -3,7 +3,7 @@ import numpy as np
 from tree import Tree
 
 class RRTBase(object):
-    def __init__(elf, X, Q, x_init, x_goal, max_samples, r, prc=0.01):
+    def __init__(self, X, Q, x_init, x_goal, max_samples, r, prc=0.01):
         """
         Template RRT planner
         :param X: Search Space
@@ -78,7 +78,7 @@ class RRTBase(object):
         """
         x_rand = self.X.sample_free()
         x_nearest = self.get_nearest(tree, x_rand)
-        x_new = self.bound_point(steer(x_nearest, x_rand, q[0]))
+        x_new = self.bound_point(self.steer(x_nearest, x_rand, q[0]))
         # check if new point is in X_free and not already in V
         if not self.trees[0].V.count(x_new) == 0 or not self.X.obstacle_free(x_new):
             return None, None
@@ -171,7 +171,7 @@ class RRTBase(object):
         point = np.minimum(point, self.X.dimension_lengths[:, 1])
         return tuple(point)
 
-    def steer(start, goal, d):
+    def steer(self, start, goal, d):
         """
         Return a point in the direction of the goal, that is distance away from start
         :param start: start location

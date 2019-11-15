@@ -17,3 +17,10 @@ sudo pip install vcstool
 
 # Install dependencies
 vcs import < igvc.deps
+
+
+# Install library dependencies
+sudo apt install libspatialindex-dev
+
+# Install python dependencies
+pip install -r requirements.txt

@@ -1,6 +1,6 @@
 import numpy as np
 
-def travel_cost(a: tuple, b: tuple) -> float:
+def travel_cost(a, b):
     return np.linalg.norm(np.array(b) - np.array(a))
 
 def path_cost(edges, a, b):

@@ -17,7 +17,7 @@ class RRTStar(RRT):
         :param prc: probability of checking whether there is a solution
         :param rewire_count: number of nearby vertices to rewire
         """
-        super().__init__(X, Q, x_init, x_goal, max_samples, r, prc)
+        super(RRTStar, self).__init__(X, Q, x_init, x_goal, max_samples, r, prc)
         self.rewire_count = rewire_count if rewire_count is not None else 0
         self.c_best = float('inf')  # length of best solution thus far
 
