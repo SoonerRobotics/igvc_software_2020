@@ -3,26 +3,28 @@
 
 class IGVCMotor {
     public:
-        IGVCMotor(PinName enable, PinName pwm) {
-            enablePin = new DigitalOut(enable);
-            pwmPin = new AnalogOut(pwm);
+        IGVCMotor(PinName a1, PinName a2, PinName pwm) {
+            this -> a1 = new DigitalOut(a1);
+            this -> a2 = new DigitalOut(a2);
+            this -> pwmPin = new PwmOut(pwm);
+            
+            this -> pwmPin -> period(1.0/15000.0); // 15 kHz frequency
         }
         
         void output(float speed) {
-            if (speed < 0.05f) {
-                setEnabled(0);
+            if (speed < 0.05f && speed > -0.05f) { // break
+                a1 -> write(0);
+                a2 -> write(0);
                 pwmPin->write(0);
-            if (speed <= 1.0f) {
-                setEnabled(1);
+            } else if (speed > 0.0f) { // forward
+                a1 -> write(0);
+                a2 -> write(1);
                 pwmPin->write(speed);
-            } else {
-                setEnabled(1);
-                pwmPin->write(1);
+            } else { // reverse
+                a1 -> write(1);
+                a2 -> write(0);
+                pwmPin->write(-speed); // mbed only accepts positive PWM duty cycles
             }
-        }
-        
-        void setEnabled(int enabled) {
-            enablePin->write(enabled);
         }
         
         IGVCMotor& operator= (float v) {
@@ -31,8 +33,9 @@ class IGVCMotor {
         }
         
     private:
-        DigitalOut* enablePin;
-        AnalogOut* pwmPin;
+        DigitalOut* a1;
+        DigitalOut* a2;
+        PwmOut* pwmPin;
         
 };
 
