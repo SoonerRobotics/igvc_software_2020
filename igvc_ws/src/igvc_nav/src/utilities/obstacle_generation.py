@@ -58,3 +58,27 @@ def obstacle_generator(obstacles):
     """
     for obstacle in obstacles:
         yield (uuid.uuid4(), obstacle, obstacle)
+
+
+def roadmap1():
+    obstacles = []
+
+    # Lanes
+    lane1 = (300, 0, 330, 2000)
+    lane2 = (1700, 0, 1730, 2000)
+
+    # Add lanes
+    obstacles.append(lane1)
+    obstacles.append(lane2)
+
+    # Barrels
+    barrel1 = (350, 200, 500, 350)
+    barrel2 = (800, 1200, 1000, 1450)
+    barrel3 = (900, 1100, 1500, 1250)
+
+    # Add barrels
+    obstacles.append(barrel1)
+    obstacles.append(barrel2)
+    obstacles.append(barrel3)
+
+    return obstacles
