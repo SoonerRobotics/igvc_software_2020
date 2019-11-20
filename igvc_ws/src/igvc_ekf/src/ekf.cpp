@@ -5,20 +5,21 @@ EKF::EKF()
 {
     // set the covariance matrix to 0.8 identically
     this->P_k.setIdentity(11, 11);
-    this->P_k *= 0.8;
+    this->P_k *= 0.1;
 
     // Define the process noise
     this->Q_k.setIdentity(11, 11);
     this->Q_k *= 0.1;
 
     // Define the measurement noise
-    this->R_k.setIdentity(11, 11);
-    this->R_k *= 0.2;
+    this->R_k.setIdentity(6, 6);
+    this->R_k(0, 0) = 3.395864;
+    this->R_k(1, 1) = 4.571665;
 
     // Define the measurement model
     this->H_k.setZero(6, 11);
-    this->H_k(0,0) = 1;
-    this->H_k(1,1) = 1;
+    this->H_k(0, 0) = 1;
+    this->H_k(1, 1) = 1;
     this->H_k(2, 8) = 0.5;
     this->H_k(2, 9) = 0.5;
     this->H_k(3, 10) = 1;
