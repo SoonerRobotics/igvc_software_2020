@@ -51,9 +51,11 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
   FILES
   lane_error.msg
-  vel.msg
+  velocity.msg
   motors.msg
   ekf_state.msg
+  gps.msg
+  imuodom.msg
 )
 
 ## Generate services in the 'srv' folder
