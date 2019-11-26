@@ -2,10 +2,12 @@
 import numpy as np
 from math import degrees
 from matplotlib import pyplot as plt
+
 import rospy
 from igvc_msgs.msg import ekf_state
+from roslib.packages import get_pkg_dir
 
-
+pkg_path = get_pkg_dir("igvc_ekf")
 
 def plot_x(msg):
     global counter
@@ -17,8 +19,11 @@ def plot_x(msg):
         plt.draw()
         plt.pause(0.00000000001)
 
-        csv_file = open("export.csv", "a")
-        csv_file.write(str(degrees(msg.x_k[0])) + "," + str(degrees(msg.x_k[1])) + "\n")
+        csv_file = open(pkg_path + "/data/export.csv", "a")
+        state_str = str(counter/10) + "," + str(degrees(msg.x_k[0])) + "," + str(degrees(msg.x_k[1])) + ","
+        for i in range(2, 11):
+            state_str += str(msg.x_k[i]) + ","
+        csv_file.write(state_str + "\n")
         csv_file.close()
 
     counter += 1
@@ -30,8 +35,8 @@ if __name__ == '__main__':
 
     rospy.Subscriber("/igvc_ekf/filter_output", ekf_state, plot_x)
 
-    csv_file = open("export.csv", "w")
-    csv_file.write("lat, lon\n")
+    csv_file = open(pkg_path + "/data/export.csv", "w")
+    csv_file.write("id, lat, lon, theta, x, y, psi, vel, psi_dot, left_v, right_v, accel\n")
     csv_file.close()
 
     plt.ion()

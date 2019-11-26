@@ -4,17 +4,21 @@
 #include <ros/ros.h>
 #include <eigen3/Eigen/Dense>
 
+// Macros for unit conversion
+#define degreesToRadians(angleDegrees) ((angleDegrees) * M_PI / 180.0)
+#define radiansToDegrees(angleRadians) ((angleRadians) * 180.0 / M_PI)
+
 // Global Constants
 #define EARTH_RADIUS (double)(6378137)  // meters
+#define LAT_RAD_TO_M (double)(degreesToRadians(111111))   //meters
+#define LON_RAD_TO_M (double)(degreesToRadians(78710))    //meters
 #define NSEC_TO_SEC (double)(1000.0 * 1000.0 * 1000.0)
 
 // Robot Properties
 #define WHEELBASE_LEN (double)(0.84455) // 33.25 inches (in meters)
 #define WHEEL_RADIUS (double)(0.127)    // 5 inches (in meters)
 
-// Macros for unit conversion
-#define degreesToRadians(angleDegrees) ((angleDegrees) * M_PI / 180.0)
-#define radiansToDegrees(angleRadians) ((angleRadians) * 180.0 / M_PI)
+
 
 class EKF
 {
