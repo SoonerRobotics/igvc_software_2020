@@ -28,6 +28,8 @@ class EKF
         void init(Eigen::VectorXd x0);
         Eigen::VectorXd run_filter(Eigen::VectorXd sensor_data, Eigen::VectorXd u_k);
 
+        double get_convergence();
+
     private:
         // Filter variables
         Eigen::VectorXd x_k;
@@ -52,6 +54,11 @@ class EKF
         Eigen::MatrixXd H_k;    // Sensor model
         Eigen::MatrixXd K_k;    // Kalman Gain
         Eigen::MatrixXd R_k;    // Measurement noise
+        Eigen::MatrixXd Sk;     // Innovation Covariance
+        Eigen::VectorXd yk;     // Innovation
+
+        // Convergence
+        double convergence;
 
         // Identity matrix
         Eigen::MatrixXd I;

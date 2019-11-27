@@ -5,14 +5,14 @@ EKF::EKF()
 {
     // set the covariance matrix to 0.8 identically
     this->P_k.setIdentity(11, 11);
-    this->P_k *= 0.5;
+    this->P_k *= 0.9;
 
     // Define the process noise
     this->Q_k.setIdentity(11, 11);
-    this->Q_k *= 0.2;
+    this->Q_k *= 0.4;
 
     // Define the measurement noise
-    this->R_k.setIdentity(9, 9) * 0.2;
+    this->R_k.setIdentity(9, 9) * 0.7;
     this->R_k(0, 0) = 3.395864;
     this->R_k(1, 1) = 4.571665;
 
@@ -87,6 +87,10 @@ Eigen::VectorXd EKF::run_filter(Eigen::VectorXd sensors, Eigen::VectorXd u_k)
 }
 
 
+double EKF::get_convergence()
+{
+    return this->convergence;
+}
 
 
 
@@ -226,8 +230,8 @@ Eigen::VectorXd EKF::get_measurements()
     measurements(4) = this->x_k(2);
     measurements(5) = this->x_k(5);
     measurements(6) = this->x_k(7);
-    //measurements(7) = this->x_k(8);
-    //measurements(8) = this->x_k(9);
+    measurements(7) = this->x_k(8);
+    measurements(8) = this->x_k(9);
 
     return measurements;
 }
@@ -237,10 +241,13 @@ Eigen::VectorXd EKF::get_measurements()
 void EKF::update(Eigen::VectorXd z_k)
 {
     // Calculate the innovation (the difference between predicted measurements and the actual measurements)
-    Eigen::VectorXd yk = z_k - get_measurements();
+    this->yk = z_k - get_measurements();
 
     // Find the covariance of the innovation
-    Eigen::MatrixXd Sk = (this->H_k * this->P_k * this->H_k.transpose()) + this->R_k;
+    this->Sk = (this->H_k * this->P_k * this->H_k.transpose()) + this->R_k;
+
+    // Convergence calculation
+    this->convergence = this->yk.transpose() * this->Sk.inverse() * this->yk;
 
     // Compute Kalman gain
     this->K_k = this->P_k * H_k.transpose() * Sk.inverse();

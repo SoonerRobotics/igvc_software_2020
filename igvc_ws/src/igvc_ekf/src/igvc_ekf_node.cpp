@@ -9,6 +9,7 @@
 
 #include "igvc_ekf/ekf.h"
 #include "igvc_msgs/ekf_state.h"
+#include "igvc_msgs/ekf_convergence.h"
 #include "igvc_msgs/gps.h"
 #include "igvc_msgs/imuodom.h"
 #include "igvc_msgs/velocity.h"
@@ -24,6 +25,7 @@ Eigen::VectorXd z(9);
 double last_heading = -1010;
 
 ros::Publisher output_pub;
+ros::Publisher convergence_pub;
 
 uint16_t data_init = 0;
 
@@ -53,6 +55,19 @@ void updateEKF(const ros::TimerEvent& time_event)
 
         // Publish predicted state
         output_pub.publish(state);
+    }
+}
+
+void updateConvergence(const ros::TimerEvent& timer_event)
+{
+    // If all the sensor data has been received at least once, start publishing convergence
+    if(data_init & 0xF)
+    {
+        igvc_msgs::ekf_convergence converge;
+
+        converge.data = ekf.get_convergence();
+
+        convergence_pub.publish(converge);
     }
 }
 
@@ -111,7 +126,7 @@ void updateVelocity(const igvc_msgs::velocity::ConstPtr& vel_msg)
     // Show that the velocity has been updated
     data_init |= (1 << 1);
 
-    std::string data = std::to_string(z(2)) + "\n";
+    std::string data = std::to_string(z(2)) + ", " + std::to_string(z(7)) + ", " + std::to_string(z(8)) +  "\n";
     vel_file << data;
 }
 
@@ -180,9 +195,11 @@ int main(int argc, char** argv)
 
     // Publishers
     output_pub = ekf_node.advertise<igvc_msgs::ekf_state>(ekf_node.resolveName("/igvc_ekf/filter_output"), 10);
+    convergence_pub = ekf_node.advertise<igvc_msgs::ekf_convergence>(ekf_node.resolveName("/igvc_ekf/ekf_convergence"), 10);
 
     // Timers
     ros::Timer ekf_update = ekf_node.createTimer(ros::Duration(0.02), &updateEKF, false);
+    ros::Timer converge_update = ekf_node.createTimer(ros::Duration(0.025), &updateConvergence, false);
 
     ros::spin();
 
