@@ -40,6 +40,8 @@ EKF::EKF()
 
     // angular velocity
     this->H_k(6, 7) = 1;
+    //this->H_k(6, 8) = -(WHEEL_RADIUS / WHEELBASE_LEN);
+    //this->H_k(6, 9) = WHEEL_RADIUS / WHEELBASE_LEN;
 
     // left velocity
     this->H_k(7, 8) = 1;
