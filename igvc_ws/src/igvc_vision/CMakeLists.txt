@@ -110,7 +110,7 @@ find_package(OpenCV REQUIRED)
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES igvc_vision
-#  CATKIN_DEPENDS cv_bridge image_geometry roscpp rospy std_msgs
+  CATKIN_DEPENDS cv_bridge image_geometry roscpp rospy std_msgs
 #  DEPENDS system_lib
 )
 
@@ -154,6 +154,11 @@ include_directories(
 # target_link_libraries(${PROJECT_NAME}_node
 #   ${catkin_LIBRARIES}
 # )
+
+# Vision
+add_executable(lidar_node src/lidar_node.cpp)
+target_link_libraries(lidar_node ${catkin_LIBRARIES})
+add_dependencies(lidar_node ${catkin_EXPORTED_TARGETS})
 
 #############
 ## Install ##
