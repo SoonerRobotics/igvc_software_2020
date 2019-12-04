@@ -1,0 +1,18 @@
+
+<launch>
+
+    <!-- RosBridge Server -->
+    <include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch" >
+        <arg name="port" value="9090"/>
+    </include>
+
+    <!-- Moving Target D* Lite node -->
+    <node pkg="igvc_nav" type="mt_dstar_node.py" name="mt_dstar_node" output="screen" />
+
+    <!-- Mapping node -->
+    <node pkg="igvc_vision" type="lidar_node" name="lidar_node" />
+
+    <!-- RViz -->
+    <node type="rviz" name="rviz" pkg="rviz" />
+
+</launch>
