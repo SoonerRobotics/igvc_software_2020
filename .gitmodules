@@ -1,3 +1,0 @@
-[submodule "igvc_ws/src/ydlidar_ros"]
-	path = igvc_ws/src/ydlidar_ros
-	url = https://github.com/YDLIDAR/ydlidar_ros.git
