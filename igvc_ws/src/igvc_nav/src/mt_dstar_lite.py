@@ -30,5 +30,8 @@ class mt_dstar_lite:
             for j in range(self.W):
                 self.grid[i, j] = node(i, j)
 
+    def plan(self, nodes, robot_pos, goal_pos):
+        pass
+
 
 

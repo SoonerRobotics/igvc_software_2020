@@ -75,6 +75,7 @@ def lidar_callback(data):
 
         path_pub.publish(path_msg)
 
+
 def mt_dstar_node():
 
     # Setup node
@@ -86,6 +87,9 @@ def mt_dstar_node():
     # Wait for topic updates
     rospy.spin()
 
+
+
+# Main setup
 if __name__ == '__main__':
     try:
         mt_dstar_node()
