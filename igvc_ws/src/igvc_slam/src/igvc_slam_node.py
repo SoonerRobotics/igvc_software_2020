@@ -7,7 +7,7 @@ import rospy
 from nav_msgs.msg import OccupancyGrid
 
 # Publishers
-config_pub = rospy.Publisher("/igvc_vision/config_space", OccupancyGrid, queue_size=10)
+config_pub = rospy.Publisher("/igvc_slam/config_space", OccupancyGrid, queue_size=1)
 
 # Configuration space map
 config_msg = OccupancyGrid()
