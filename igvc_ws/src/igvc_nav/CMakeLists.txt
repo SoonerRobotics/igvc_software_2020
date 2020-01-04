@@ -132,7 +132,7 @@ add_library(ROBOTLIB
 ## Declare a C++ executable
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
-add_executable(igvc_nav_node src/igvc_nav_node.cpp)
+# add_executable(igvc_nav_node src/igvc_nav_node.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -145,7 +145,7 @@ add_executable(igvc_nav_node src/igvc_nav_node.cpp)
 # add_dependencies(igvc_nav_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(igvc_nav_node ${catkin_LIBRARIES} ROBOTLIB)
+# target_link_libraries(igvc_nav_node ${catkin_LIBRARIES} ROBOTLIB)
 
 #############
 ## Install ##
