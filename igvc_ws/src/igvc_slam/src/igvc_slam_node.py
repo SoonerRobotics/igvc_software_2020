@@ -4,20 +4,32 @@ import copy
 import numpy as np
 import rospy
 
-from nav_msgs.msg import OccupancyGrid
+from nav_msgs.msg import OccupancyGrid, MapMetaData
 
 # Publishers
 config_pub = rospy.Publisher("/igvc_slam/config_space", OccupancyGrid, queue_size=1)
 
 # Configuration space map
-config_msg = OccupancyGrid()
+metadata = MapMetaData()
 lidar_config_data = [0] * (200 * 200)
 lanes_camera_config_data = [0] * (200 * 200)
 
+# Initializiation
+lidar_init = False
 
 
 def lidar_callback(data):
+    # use the global vars
+    global lidar_init
+    global lidar_config_data
+    global metadata
+
     lidar_config_data = [0] * (200 * 200)
+
+    # HACK: eventually set this to be based on the map size and stuff
+    metadata = MapMetaData(map_load_time = data.info.map_load_time, resolution=data.info.resolution,
+                            width = data.info.width, height = data.info.height, origin = data.info.origin)
+    lidar_init = True
 
     for x in range(200):
         for y in range(200):
@@ -30,8 +42,7 @@ def lidar_callback(data):
                         if 0 <= new_x < 200 and 0 <= new_y < 200 and dist <= 25:
                             lidar_config_data[(x + x_i) + 200 * (y + y_i)] = 100
 
-    # HACK: eventually set this to be based on the map size and stuff
-    config_msg = copy.copy(data)
+
 
 
 
@@ -41,12 +52,18 @@ def lanes_camera_callback():
 
 # TODO: currently this whole thing is set to use the most recent map frames from each perception unit (which is fine for now). In the future the sizing will change as the map grows.
 def config_space_callback(event):
-    # TODO: Make this add the lidar config space to the camera config space
-    config_space = lidar_config_data
+    # Use the global data
+    global lidar_init
+    global lidar_config_data
+    global metadata
 
-    # Publish the configuration space
-    config_msg.data = config_space
-    config_pub.publish(config_msg)
+    if lidar_init is True:
+        # TODO: Make this add the lidar config space to the camera config space
+        config_space = lidar_config_data
+
+        # Publish the configuration space
+        config_msg = OccupancyGrid(info=metadata, data=config_space)
+        config_pub.publish(config_msg)
 
 
 
@@ -55,10 +72,10 @@ def igvc_slam_node():
     rospy.init_node("igvc_slam_node")
 
     # Subscribe to necessary topics
-    rospy.Subscriber("/igvc_vision/map", OccupancyGrid, lidar_callback, queue_size=1)
+    map_sub = rospy.Subscriber("/igvc_vision/map", OccupancyGrid, lidar_callback, queue_size=10)
 
     # Make a timer to publish configuration spaces periodically
-    rospy.Timer(rospy.Duration(secs=1), config_space_callback, oneshot=False)
+    timer = rospy.Timer(rospy.Duration(secs=1), config_space_callback, oneshot=False)
 
     # Wait for topic updates
     rospy.spin()
