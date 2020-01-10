@@ -16,29 +16,8 @@ path_pub = rospy.Publisher("/igvc_vision/path_map", OccupancyGrid, queue_size=10
 # planner = mt_dstar_lite(200, 200)
 
 
-def lidar_callback(data):
-    config_space = np.zeros((200, 200))
-    config_data = [0] * (200 * 200)
+def c_space_callback(map):
 
-    for x in range(200):
-        for y in range(200):
-            new_x = 199 - x
-            new_y = 199 - y
-            if new_y < 100:
-                config_space[new_x, new_y] = 1
-            if data.data[x + y * 200] > 0:
-                for x_i in range(-5,6):
-                    for y_i in range(-5,6):
-                        dist = (x_i)**2 + (y_i)**2
-                        new_x = 199 - (x + x_i)
-                        new_y = 199 - (y + y_i)
-                        if 0 <= new_x < 200 and 0 <= new_y < 200 and dist <= 25:
-                            config_space[new_x, new_y] = 1
-                            config_data[(x + x_i) + 200 * (y + y_i)] = 100
-
-    config_msg = copy.copy(data)
-    config_msg.data = config_data
-    config_pub.publish(config_msg)
 
     best_pos = (0,0)
     best_pos_cost = 10000
@@ -82,7 +61,7 @@ def mt_dstar_node():
     rospy.init_node("mt_dstar_node")
 
     # Subscribe to necessary topics
-    rospy.Subscriber("/igvc_vision/map", OccupancyGrid, lidar_callback, queue_size=1)
+    rospy.Subscriber("/igvc_slam/config_space", OccupancyGrid, c_space_callback, queue_size=1)
 
     # Wait for topic updates
     rospy.spin()
