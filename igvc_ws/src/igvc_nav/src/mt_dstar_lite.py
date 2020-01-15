@@ -1,5 +1,6 @@
 
 import numpy as np
+import heapq
 
 class Node:
 
@@ -13,6 +14,7 @@ class Node:
         self.G = self.INFINITY
         self.rhs = self.INFINITY
         self.par = None
+        self.key = (None, None)
 
     def set_g(self, G):
         self.G = G
@@ -23,31 +25,60 @@ class Node:
     def set_par(self, par):
         self.par = par
 
+    def set_key(self, key):
+        self.key = key
+
+    def __cmp__(self, other):
+        """ Sort keys with largest being highest priority """
+        # Sort by the first key
+        comp_val = -cmp(self.key[0], other.key[0])
+        if comp_val != 0:
+            return comp_val
+
+        # If there was a tie, use the second key as a tiebreaker
+        return -cmp(self.key[1], other.key[1])
+
+    def __eq__(self, other):
+        return (self.x == other.x) && (self.y == other.y)
 
 
 
 class OpenList:
 
     def __init__(self):
-        pass
+        """ Initialize the open list """
+        # Set up an empty max heap using list and heapq
+        self.max_heap = []
+        heapq.heapify(self.max_heap)
 
-    def update(self, node, key):
-        pass
+    def update(self, node):
+        """ Update a node entry in the open list """
+        if node in self.max_heap:
+            self.delete(node)
+            self.insert(node)
 
-    def insert(self, node, key):
-        pass
+    def insert(self, node):
+        """ Add a node to the queue """
+        # Push the node to the heap
+        heapq.heappush(self.max_heap, node)
 
     def delete(self, node):
-        pass
+        """ Delete a node from the open list """
+        if node in self.max_heap:
+            self.max_heap.remove(node)
+            heapq.heapify(self.max_heap)
 
     def top_key(self):
-        pass
+        """ Get the top value in the heap """
+        # The top key will be the "lowest value." This is because our max heap is actually just a min-heap with a comparator that sorts in reverse
+        return min(self.max_heap).key
 
     def top(self):
-        pass
+        """ Get the top value from the list """
+        return heapq.heappop(self.max_heap)
 
-    def contains(self):
-        pass
+    def contains(self, val):
+        return val in self.max_heap
 
 
 
@@ -110,11 +141,13 @@ class mt_dstar_lite:
         """ Updates a node's status based on the progression of the search """
         # If the node is on the open list and is inconsistent, update it
         if node.G != node.rhs and self.open_list.contains(node):
-            self.open_list.update(node, self.calculate_key(node))
+            node.set_key(self.calculate_key(node))
+            self.open_list.update(node)
 
         # If the node is not on the open list, but is inconsistent, then add it to the open list
         elif node.G != node.rhs and not self.open_list.contains(node):
-            self.open_list.insert(node, self.calculate_key(node))
+            node.set_key(self.calculate_key(node))
+            self.open_list.insert(node)
 
         # If the node is on the open list and is consistent, close it by removing it from the open list
         elif node.G == node.rhs and self.open_list.contains(node):
@@ -128,12 +161,13 @@ class mt_dstar_lite:
             u_node = self.open_list.top()
 
             # Compute keys for this node
-            old_key = self.open_list.top_key()
+            old_key = u_node.key
             new_key = self.calculate_key(u_node)
 
             # If the new key is greater than the old key, update the open list
             if old_key < new_key:
-                self.open_list.update(u_node, new_key)
+                u_node.set_key(new_key)
+                self.open_list.update(u_node)
 
             # Otherwise, if the node's G value is higher than its RHS value, close the node and update its successors
             elif u_node.G > u_node.rhs:
