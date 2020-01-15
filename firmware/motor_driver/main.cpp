@@ -2,8 +2,8 @@
 #include "ArduinoJson.h"
 #include "IGVCMotor.h"
 
-IGVCMotor motorLeft(PB_6, PA_4);
-IGVCMotor motorRight(PB_7, PA_5);
+IGVCMotor motorLeft(PB_0, PB_7, PA_3);
+IGVCMotor motorRight(PB_6, PB_1, PA_1);
 
 Serial pc(SERIAL_TX, SERIAL_RX);
 
