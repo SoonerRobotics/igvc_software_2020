@@ -1,4 +1,4 @@
-repositories: 
+repositories:
     ../igvc_ws/src/deps/robot_localization:
         type: git
         url: https://github.com/cra-ros-pkg/robot_localization.git
@@ -14,7 +14,15 @@ repositories:
     ../igvc_ws/src/deps/ydlidar_ros:
         type: git
         url: https://github.com/YDLIDAR/ydlidar_ros
-        version: master
+        version: f51e5e37368422d10df303a74952dc31de162549
     ../igvc_ws/src/deps/cv_camera:
         type: git
         url: https://github.com/OTL/cv_camera.git
+    ../igvc_ws/src/deps/yostlabs_imu:
+        type: git
+        url: https://github.com/SoonerRobotics/yostlab_imu.git
+        version: master
+    ../igvc_ws/src/deps/serial:
+        type: git
+        url: https://github.com/wjwwood/serial.git
+        version: master
