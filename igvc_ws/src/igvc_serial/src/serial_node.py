@@ -45,7 +45,7 @@ def motors_out(data):
 
 def get_gps_sensor_data(timer_event):
     global gps_serial
-    global 
+    global gps_pub
 
     # Read the coordinate packet
     coord = gps_serial.read_until()
