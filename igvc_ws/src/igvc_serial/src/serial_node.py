@@ -35,10 +35,14 @@ class SerialReadThread(threading.Thread):
 def motors_out(data):
     motion_pkt = {
         "motorLeft": data.left,
-        "motorRight": data.right
+        "motorRight": data.right,
+        "tune_p": 0.05,
+        "tune_i": 0.0,
+        "tune_d": 0.0001
     }
 
     json_dump = json.dumps(motion_pkt, separators=(',', ':'))
+    print("writing " + json_dump)
     out = (json_dump + "\n").encode() # encode json string to bytes
 
     serials["motor"].write(out)
@@ -49,7 +53,7 @@ def serial_node():
     rospy.init_node("serial_node", anonymous = True)
 
     # Create Serial objects to read and write from serial devices
-    serials["motor"] = serial.Serial(port = '/dev/igvc-nucleo-319', baudrate = 115200)
+    serials["motor"] = serial.Serial(port = '/dev/igvc-nucleo-120', baudrate = 115200)
 
     # Subscribe to necessary topics
     rospy.Subscriber("/igvc/motors_raw", motors, motors_out)
