@@ -1,17 +1,14 @@
 
 from math import sqrt
-import numpy as np
 import heapq
 
 class Node:
 
     INFINITY = 1000000000
 
-    def __init__(self, row, col, x, y, cost = 0):
+    def __init__(self, row, col, cost = 0):
         self.row = row
         self.col = col
-        self.x = x
-        self.y = y
 
         # Default node value
         self.G = self.INFINITY
@@ -48,7 +45,7 @@ class Node:
         return cmp(self.key[1], other.key[1])
 
     def __eq__(self, other):
-        return (self.x == other.x) && (self.y == other.y)
+        return (self.row == other.row) and (self.col == other.col)
 
 
 
@@ -80,7 +77,7 @@ class OpenList:
     def top_key(self):
         """ Get the top value in the heap """
         if len(self.min_heap) == 0:
-            return (INFINITY, INFINITY)
+            return (Node.INFINITY, Node.INFINITY)
         # The top key will be the lowest priority
         return min(self.min_heap).key
 
@@ -103,22 +100,17 @@ class SearchSpace:
         self.H = height
 
         # Create a graph for searching
-        self.grid = np.ndarray(shape = (self.H, self.W), dtype = Node)
-
-        # Load the numpy array with graph nodes
-        for i in range(self.H):
-            for j in range(self.W):
-                self.grid[i, j] = Node(i, j)
+        self.grid = [[Node(i, j) for i in range(self.H)] for j in range(self.W)]
 
     def get_node(self, pos):
         """ Gets a node at a given (row, col) position from the grid """
-        return self.grid[pos[0], pos[1]]
+        return self.grid[pos[0]][pos[1]]
 
     def get_successors(self, node):
         succ = []
-        for i in range(node.x-1, node.x+1):
-            for j in range(node.y-1, node.y+1):
-                succ.append(self.grid[i,j])
+        for i in range(node.row-1, node.row+1):
+            for j in range(node.col-1, node.col+1):
+                succ.append(self.grid[i][j])
 
         return succ
 
@@ -129,14 +121,35 @@ class SearchSpace:
 # Algorithm: http://idm-lab.org/bib/abstracts/papers/aamas10a.pdf
 class mt_dstar_lite:
 
-    def __init__(self, width, height, robot_pos, goal_pos):
+    def __init__(self):
+        """ Initialize the Moving Target D* Lite algorithm """
+        # Moving Target
+        self.km = 0
+        self.search_space = None
+
+        # Lists
+        self.open_list = None
+        self.deleted_list = None
+        self.path = None
+
+        # Nodes
+        self.start_node = None
+        self.goal_node = None
+        self.old_start = None
+        self.old_goal = None
+
+
+    def initialize(self, width, height, robot_pos, goal_pos, map_data):
         """ Initialize the Moving Target D* Lite algorithm """
         # Search variables
         self.km = 0
         self.open_list = OpenList()
+        self.deleted_list = []
+        self.path = []
 
         # Create a search space
         self.search_space = SearchSpace(width, height)
+        self.search_space.load_search_space_from_map(map_data)
 
         # Get the node the robot is on (row, col is the pos argument)
         self.start_node = self.search_space.get_node(robot_pos)
@@ -148,7 +161,8 @@ class mt_dstar_lite:
         self.start_node.set_rhs(0)
 
         # Add the robot's node to the open list
-        self.open_list.insert(self.start_node, self.calculate_key(self.start_node))
+        self.start_node.set_key(self.calculate_key(self.start_node))
+        self.open_list.insert(self.start_node)
 
 
     def calculate_key(self, node):
@@ -158,14 +172,14 @@ class mt_dstar_lite:
 
     def heuristic(self, node1, node2):
         """ Compute the distance from one node to another """
-        return sqrt((node2.x - node1.x)**2 + (node2.y - node1.y)**2)
+        return sqrt((node2.row - node1.row)**2 + (node2.col - node1.col)**2)
 
     def cost(self, node1, node2):
         """ Computer actual cost incurred by moving from one node to another """
-        if node1.cost < INFINITY and node2.cost < INFINITY:
-            return heuristic(node1, node2) + node1.cost + node2.cost
+        if node1.cost < Node.INFINITY and node2.cost < Node.INFINITY:
+            return self.heuristic(node1, node2) + node1.cost + node2.cost
         else:
-            return INFINITY
+            return Node.INFINITY
 
 
     def update_state(self, node):
@@ -226,8 +240,8 @@ class mt_dstar_lite:
                         s_rhs = min([node.G + self.cost(node, s_node) for node in self.search_space.get_successors(s_node)])
                         s_node.set_rhs(s_rhs)
 
-                        if s_node.rhs >= INFINITY:
-                            s_node.set_rhs(INFINITY)
+                        if s_node.rhs >= Node.INFINITY:
+                            s_node.set_rhs(Node.INFINITY)
                             s_node.set_par(None)
                         else:
                             # Set the parent node pointer based on the parent node that has the minimum path cost to goal from this node
@@ -251,7 +265,72 @@ class mt_dstar_lite:
         self.deleted_list = set()
         self.start_node.set_par(None)
 
-    def plan(self, nodes, robot_pos, goal_pos):
-        pass
+
+    def get_best_path(self):
+        """ Get the best path using the parent pointers """
+        # Start at the start and keep track of the footsteps
+        node = self.goal_node
+        path = [node]
+
+        # Go until the goal is found
+        while node != self.start_node:
+            # Add the next node to the path
+            next_node = node.par
+            path.append(next_node)
+            node = next_node
+
+        # The best path should be found by traversing the pointers
+        return path
+
+
+
+    # NOTE: we assume that the hunter never catches the target. We also assume that the edge costs change
+    # during every configuration space update for now - the SLAM node will (in the future) provide new maps only when the
+    # robot has moved. Since the target cannot move off the path unless the map updates, and the map only updates to show new
+    # edge costs, we don't need to check for the conditions in the while loop that waits for the hunter to follow the target,
+    # as described in the original algorithm
+
+    def plan(self):
+        """ Plan the robot's initial path """
+        # Set the last robot positions
+        self.old_start = self.start_node
+        self.old_goal = self.goal_node
+
+        # Find a low cost path from the start to the goal
+        self.compute_cost_minimal_path()
+
+        # If the goal has a RHS of infinity, then there is no path
+        if self.goal_node.rhs >= Node.INFINITY:
+            print("Get rekt " + str(self.goal_node.rhs))
+            return None
+
+        # Figure out path by following the parent pointers (par) to the goal node
+        self.path = self.get_best_path()
+        return self.path
+
+    # NOTE: Per the note above, we must unwrap the main while loop since there is a discontinuity caused by the "hunter follows target"
+    # while loop. Therefore, plan() should only be called by an external class the first time we want to plan,
+    # and all subsequent external planning requests should be to the following replan() function
+
+    def replan(self, robot_pos, goal_pos):
+        # Get the node the robot is on (row, col is the pos argument)
+        self.start_node = self.search_space.get_node(robot_pos)
+
+        # Get the node the goal is on (row, col is the pos argument)
+        self.goal_node = self.search_space.get_node(goal_pos)
+
+        # Update the km search parameter
+        self.km = self.km + self.heuristic(self.goal_node, self.old_goal)
+
+        # If the robot has moved, delete the nodes that were shifted off the map and move the robot back to its start point
+        # TODO: how do we do this? The robot should always maintain its start position, so we need to be creative with how to make it not do that
+        if self.old_start != self.start_node:
+            self.optimized_deletion()
+
+        # Update all changed edge costs
+        # TODO
+
+        # Plan the path after adjustments
+        return self.plan()
 
 

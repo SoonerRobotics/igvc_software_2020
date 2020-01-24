@@ -9,21 +9,26 @@ import numpy as np
 from mt_dstar_lite import mt_dstar_lite
 
 motor_pub = rospy.Publisher("/igvc/motors_raw", motors, queue_size=10)
-config_pub = rospy.Publisher("/igvc_vision/config_space", OccupancyGrid, queue_size=10)
-path_pub = rospy.Publisher("/igvc_vision/path_map", OccupancyGrid, queue_size=10)
+path_pub = rospy.Publisher("/igvc_nav/path_map", OccupancyGrid, queue_size=10)
 
 # Moving Target D* Lite
-# planner = mt_dstar_lite(200, 200)
+map_init = False
+planner = mt_dstar_lite()
 
 
-def c_space_callback(map):
+def c_space_callback(c_space):
+    global planner
+    global map_init
 
+    # Get the grid data
+    grid_data = c_space.data
 
+    # Find the best position
     best_pos = (0,0)
     best_pos_cost = 10000
     for x in range(200):
         for y in range(200):
-            if config_space[x, y] == 0:
+            if grid_data[(x * 200) +  y] == 0:
                 new_cost = abs(y-125) + abs(x-100)
                 if new_cost < best_pos_cost:
                     best_pos_cost = new_cost
@@ -32,12 +37,23 @@ def c_space_callback(map):
     print "target:"
     print best_pos
 
-    # Are we somehow on a bad spot
-    if config_space[100, 100] == 1:
+    # Are we somehow on a bad spot?
+    if grid_data[(100 * 200) + 100] == 1:
         return
 
-    #path = planner.plan(config_space.tolist(), (100, 100), best_pos)
+    # Reset the path
     path = None
+
+    # MOVING TARGET D*LITE
+    # If this is the first time receiving a map, initialize the path planner and plan the first path
+    if True: #map_init is False:
+        planner.initialize(200, 200, (100, 100), best_pos, grid_data)
+        path = planner.plan()
+    # Otherwise, replan the path
+    else:
+        # Request the planner replan the path
+        path = planner.replan(config_space.tolist(), (100, 100), best_pos, grid_data)
+
 
     print "path:"
     print path
@@ -49,14 +65,13 @@ def c_space_callback(map):
             path_space[(199 - path_pos[0]) + 200 * (199 - path_pos[1])] = itt
             itt -= 1
 
-        path_msg = copy.deepcopy(data)
+        path_msg = copy.deepcopy(c_space)
         path_msg.data = path_space
 
         path_pub.publish(path_msg)
 
 
 def mt_dstar_node():
-
     # Setup node
     rospy.init_node("mt_dstar_node")
 
