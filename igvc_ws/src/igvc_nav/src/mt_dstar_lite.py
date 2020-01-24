@@ -44,6 +44,26 @@ class Node:
         # If there was a tie, use the second key as a tiebreaker
         return cmp(self.key[1], other.key[1])
 
+    def __lt__(self, other):
+        comp_val = (self.key[0] < other.key[0])
+
+        if comp_val is True:
+            return True
+        elif self.key[0] == other.key[0]:
+            return self.key[1] < other.key[1]
+
+        return False
+
+    def __gt__(self, other):
+        comp_val = (self.key[0] > other.key[0])
+
+        if comp_val is True:
+            return True
+        elif self.key[0] == other.key[0]:
+            return self.key[1] > other.key[1]
+
+        return False
+
     def __eq__(self, other):
         return (self.row == other.row) and (self.col == other.col)
 
@@ -110,7 +130,8 @@ class SearchSpace:
         succ = []
         for i in range(node.row-1, node.row+1):
             for j in range(node.col-1, node.col+1):
-                succ.append(self.grid[i][j])
+                if i >= 0 and i < self.H and j >=0 and j < self.W and (i != node.row or j != node.col):
+                    succ.append(self.grid[i][j])
 
         return succ
 
@@ -177,6 +198,7 @@ class mt_dstar_lite:
     def cost(self, node1, node2):
         """ Computer actual cost incurred by moving from one node to another """
         if node1.cost < Node.INFINITY and node2.cost < Node.INFINITY:
+            print(self.heuristic(node1, node2) + node1.cost + node2.cost)
             return self.heuristic(node1, node2) + node1.cost + node2.cost
         else:
             return Node.INFINITY
@@ -201,7 +223,9 @@ class mt_dstar_lite:
 
     def compute_cost_minimal_path(self):
         """ Finds the best path from the start state to the goal state """
-        while self.open_list.top_key() < self.calculate_key(self.goal_node) or self.goal_node.rhs > self.goal_node.G:
+        while (self.open_list.top_key() < self.calculate_key(self.goal_node)) or (self.goal_node.rhs > self.goal_node.G):
+            print("")
+            print(str(self.open_list.top_key()) + " < " + str(self.calculate_key(self.goal_node)))
             # Get the highest priority node from the open list
             u_node = self.open_list.top()
 
@@ -222,8 +246,8 @@ class mt_dstar_lite:
 
                 # Update successors
                 for s_node in self.search_space.get_successors(u_node):
-                    if s_node != self.start_node and s_node.rhs > s_node.G + self.cost(u_node, s_node):
-                        s_node.set_rhs(s_node.G + self.cost(u_node, s_node))
+                    if s_node != self.start_node and s_node.rhs > u_node.G + self.cost(u_node, s_node):
+                        s_node.set_rhs(u_node.G + self.cost(u_node, s_node))
                         s_node.set_par(u_node)
                         self.update_state(s_node)
 
