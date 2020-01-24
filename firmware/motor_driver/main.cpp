@@ -4,11 +4,11 @@
 
 InterruptIn encoderLeftA(PB_5);
 InterruptIn encoderLeftB(PB_4);
-IGVCMotor motorLeft(PB_0, PB_7, PA_3);
+IGVCMotor motorLeft(PB_6, PB_1, PA_1);
 
 InterruptIn encoderRightA(PA_8);
 InterruptIn encoderRightB(PA_11);
-IGVCMotor motorRight(PB_6, PB_1, PA_1);
+IGVCMotor motorRight(PB_0, PB_7, PA_3);
 
 Serial pc(SERIAL_TX, SERIAL_RX);
 Ticker ticker;
@@ -44,20 +44,37 @@ int main()
     pc.baud(115200);
     wait(0.01);
         
-    StaticJsonDocument<256> doc;
-    char rawJson[256];
+    StaticJsonDocument<128> doc;
+    char rawJson[128];
     
     while (1) {
         if (pc.readable()) {
             pc.scanf("%s", rawJson);
             DeserializationError err = deserializeJson(doc, rawJson);
+            
+            printf("raw: %s\n\r", rawJson);
 
             if (!err) { 
-                float motorLeftInstruction = doc["motorLeft"];
-                float motorRightInstruction = doc["motorRight"];
-                
-                motorLeft = motorLeftInstruction;
-                motorRight = motorRightInstruction;             
+                if (doc.containsKey("motorLeft"))
+                    motorLeft = (float)doc["motorLeft"];
+                    
+                if (doc.containsKey("motorRight"))
+                    motorRight = (float)doc["motorRight"];
+                    
+                if (doc.containsKey("tune_p")) {
+                    motorLeft.tuneP((float)doc["tune_p"]);
+                    motorRight.tuneP((float)doc["tune_p"]);
+                }
+                    
+                if (doc.containsKey("tune_i")) {
+                    motorLeft.tuneI((float)doc["tune_i"]);
+                    motorRight.tuneI((float)doc["tune_i"]);
+                }
+                    
+                if (doc.containsKey("tune_d")) {
+                    motorLeft.tuneD((float)doc["tune_d"]);
+                    motorRight.tuneD((float)doc["tune_d"]);     
+                }     
             }
         }
     }

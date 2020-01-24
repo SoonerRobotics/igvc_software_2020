@@ -1,11 +1,11 @@
 #ifndef IGVCMOTORH
 #define IGVCMOTORH
 
-#define MOTOR_UPDATE_RATE 2 // Frequency that motor PID is updated (Hz)
-#define MAX_SPEED 2.2 // (m/s)
+#define MOTOR_UPDATE_RATE 40 // Frequency that motor PID is updated (Hz)
+#define MAX_SPEED 2.2f // (m/s)
 #define PULSES_PER_REV 2400 // (revs)
-#define LINEAR_PER_REV 0.254 // Wheel radius (m)
-#define PI 3.14159265
+#define LINEAR_PER_REV 0.254f // Wheel radius (m)
+#define PI 3.14159265f
 
 #define PREV_MASK 0x1 // Mask for the previous state in determining direction of rotation.
 #define CURR_MASK 0x2 // Mask for the current state in determining direction of rotation.
@@ -22,6 +22,7 @@ class IGVCMotor {
             
             this->pulses = 0;
             this->targetSpeed = 0.0f;
+            this->curOutput = 0.0f;
             
             // PID values
             this->integrator = 0.0f;
@@ -32,9 +33,9 @@ class IGVCMotor {
             this->last_state = 0.0f;
             
             // Equation constants
-            this->kP = 0.1f;
+            this->kP = 0.005f;
             this->kI = 0.0f;
-            this->kD = 0.0f;
+            this->kD = 0.00005f;
         }
         
         void output(float speed) {
@@ -63,23 +64,39 @@ class IGVCMotor {
         
         // Poll to update PID
         void update() {
-            float output = this->updatePID(this->targetSpeed, this->pulses / (float)PULSES_PER_REV * 2.0 * PI * LINEAR_PER_REV * (float)MOTOR_UPDATE_RATE);
-            this->pulses = 0;
-            output = 0.0f;
+            float output = this->updatePID(this->targetSpeed, this->pulses / (float)PULSES_PER_REV * 2.0 * PI * LINEAR_PER_REV * MOTOR_UPDATE_RATE);
+            curOutput += output;
+            curOutput = clamp(curOutput, -1.0, 1.0);
+
+            //printf("%f,%f,%f\n\r", this->targetSpeed, this->pulses / (float)PULSES_PER_REV * 2.0 * PI * LINEAR_PER_REV * MOTOR_UPDATE_RATE, curOutput);
             
-            if (output < 0.05f && output > -0.05f) { // break
+            this->pulses = 0;
+            
+            if (curOutput < 0.05f && curOutput > -0.05f) { // break
                 motorA->write(0);
                 motorB->write(0);
                 pwmPin->write(0.0f);
-            } else if (output > 0.0f) { // forward
+            } else if (curOutput > 0.0f) { // forward
                 motorA->write(0);
                 motorB->write(1);
-                pwmPin->write(output);
+                pwmPin->write(curOutput);
             } else { // reverse
                 motorA->write(1);
                 motorB->write(0);
-                pwmPin->write(-output);
+                pwmPin->write(-curOutput);
             }  
+        }
+        
+        void tuneP(float p) {
+            this->kP = p;
+        }
+        
+        void tuneI(float i) {
+            this->kI = i;
+        }
+        
+        void tuneD(float d) {
+            this->kD = d;
         }
         
         IGVCMotor& operator= (float v) {
@@ -96,6 +113,7 @@ class IGVCMotor {
         int currState_;
         volatile int pulses;
         
+        float curOutput;
         float targetSpeed;
         
         // PID Values
@@ -112,9 +130,7 @@ class IGVCMotor {
         float kD;
         
         // Adapted (Stolen) from RobotLib :)
-        float updatePID(float target_state, float cur_state) {
-            printf("current speed %f\r\n", cur_state);
-            
+        float updatePID(float target_state, float cur_state) {            
             // Declare local variables
             float P, I, D;
             float result;
