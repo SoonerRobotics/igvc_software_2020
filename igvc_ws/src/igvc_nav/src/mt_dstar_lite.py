@@ -120,7 +120,14 @@ class SearchSpace:
         self.H = height
 
         # Create a graph for searching
-        self.grid = [[Node(i, j) for i in range(self.H)] for j in range(self.W)]
+        self.grid = []
+
+        # Populate the grid
+        for i in range(self.W):
+            row = []
+            for j in range(self.H):
+                row.append(Node(i,j))
+            self.grid.append(row)
 
     def get_node(self, pos):
         """ Gets a node at a given (row, col) position from the grid """
@@ -134,6 +141,14 @@ class SearchSpace:
                     succ.append(self.grid[i][j])
 
         return succ
+
+    def print_search_space_rhs(self):
+        for i in range(self.H):
+            for j in range(self.W):
+                rhs = self.grid[i][j].rhs
+                if rhs < Node.INFINITY:
+                    print("(", i, ",", j, "): ", rhs)
+            print ""
 
     def load_search_space_from_map(self, map):
         pass
@@ -198,7 +213,6 @@ class mt_dstar_lite:
     def cost(self, node1, node2):
         """ Computer actual cost incurred by moving from one node to another """
         if node1.cost < Node.INFINITY and node2.cost < Node.INFINITY:
-            print(self.heuristic(node1, node2) + node1.cost + node2.cost)
             return self.heuristic(node1, node2) + node1.cost + node2.cost
         else:
             return Node.INFINITY
@@ -224,8 +238,6 @@ class mt_dstar_lite:
     def compute_cost_minimal_path(self):
         """ Finds the best path from the start state to the goal state """
         while (self.open_list.top_key() < self.calculate_key(self.goal_node)) or (self.goal_node.rhs > self.goal_node.G):
-            print("")
-            print(str(self.open_list.top_key()) + " < " + str(self.calculate_key(self.goal_node)))
             # Get the highest priority node from the open list
             u_node = self.open_list.top()
 
@@ -258,7 +270,9 @@ class mt_dstar_lite:
                 u_node.set_g(Node.INFINITY)
 
                 # Update successors
-                for s_node in self.search_space.get_successors(u_node):
+                succ = self.search_space.get_successors(u_node)
+                succ.append(u_node)
+                for s_node in succ:
                     if s_node != self.start_node and s_node.par == u_node:
                         # Set the RHS to be the minimum one-step lookahead
                         s_rhs = min([node.G + self.cost(node, s_node) for node in self.search_space.get_successors(s_node)])
@@ -294,13 +308,13 @@ class mt_dstar_lite:
         """ Get the best path using the parent pointers """
         # Start at the start and keep track of the footsteps
         node = self.goal_node
-        path = [node]
+        path = [(node.row, node.col)]
 
         # Go until the goal is found
         while node != self.start_node:
             # Add the next node to the path
             next_node = node.par
-            path.append(next_node)
+            path.append((next_node.row, next_node.col))
             node = next_node
 
         # The best path should be found by traversing the pointers
@@ -325,6 +339,7 @@ class mt_dstar_lite:
 
         # If the goal has a RHS of infinity, then there is no path
         if self.goal_node.rhs >= Node.INFINITY:
+            self.search_space.print_search_space_rhs()
             print("Get rekt " + str(self.goal_node.rhs))
             return None
 

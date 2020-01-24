@@ -25,17 +25,20 @@ def c_space_callback(c_space):
 
     # Find the best position
     best_pos = (0,0)
-    best_pos_cost = 10000
-    for x in range(200):
-        for y in range(200):
-            if grid_data[(x * 200) +  y] == 0:
-                new_cost = abs(y-125) + abs(x-100)
+    best_pos_cost = 1000000
+
+    # only look forward
+    for row in range(100):
+        for col in range(200):
+            if grid_data[(row * 200) +  col] == 0:
+                new_cost = abs(row-75) + abs(col-100)
                 if new_cost < best_pos_cost:
                     best_pos_cost = new_cost
-                    best_pos = (x, y)
+                    best_pos = (row, col)
 
     print "target:"
     print best_pos
+    print ""
 
     # Are we somehow on a bad spot?
     if grid_data[(100 * 200) + 100] == 1:
@@ -62,7 +65,7 @@ def c_space_callback(c_space):
         path_space = [0] * 200 * 200
         itt = 100
         for path_pos in path:
-            path_space[(199 - path_pos[0]) + 200 * (199 - path_pos[1])] = itt
+            path_space[(200 * path_pos[0]) + path_pos[1]] = itt
             itt -= 1
 
         path_msg = copy.deepcopy(c_space)
