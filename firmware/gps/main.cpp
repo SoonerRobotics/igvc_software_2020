@@ -24,8 +24,8 @@ int main()
                 lat = GPS.location.lat();
                 lon = GPS.location.lng();
                 
-                doc["latitude"] = lat;
-                doc["longitude"] = lon;
+                doc['latitude'] = lat;
+                doc['longitude'] = lon;
                 
                 serializeJson(doc, ret);
                 
