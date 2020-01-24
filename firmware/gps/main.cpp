@@ -22,15 +22,19 @@ int main()
             
             if (GPS.location.isValid()) {
                 lat = GPS.location.lat();
-                lon = GPS.location.lng();
-                
-                doc['latitude'] = lat;
-                doc['longitude'] = lon;
-                
-                serializeJson(doc, ret);
-                
-                pc.printf("%s\r\n", ret);
+                lon = GPS.location.lng(); 
             }
+            else {
+                lat = -1;
+                lon = -1;
+            }
+
+            doc['latitude'] = lat;
+            doc['longitude'] = lon;
+                
+            serializeJson(doc, ret);
+                
+            pc.printf("%s\r\n", ret);
             
             ThisThread::sleep_for(500);
         }

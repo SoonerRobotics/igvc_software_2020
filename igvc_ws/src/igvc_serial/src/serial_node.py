@@ -5,7 +5,7 @@ import json
 import threading
 import serial
 
-from std_msgs.msg import String
+#from std_msgs.msg import String
 from igvc_msgs.msg import motors, gps
 
 serials = {}
@@ -23,7 +23,7 @@ class SerialReadThread(threading.Thread):
         self.serial_obj.timeout = 1
 
         # Assumes String type for now. This class will need to be adapted in the future for different message types.
-        self.publisher = rospy.Publisher(topic, String, queue_size=10)
+        #self.publisher = rospy.Publisher(topic, String, queue_size=10)
 
     def run(self):
         while not rospy.is_shutdown():
