@@ -34,12 +34,12 @@ int main()
     // attach all interrupts
     encoderLeftA.rise(&updateLeft);
     encoderLeftA.fall(&updateLeft);
-    encoderLeftB.rise(&updateLeft);
-    encoderLeftB.fall(&updateLeft);
+    // encoderLeftB.rise(&updateLeft);
+    // encoderLeftB.fall(&updateLeft);
     encoderRightA.rise(&updateRight);
     encoderRightA.fall(&updateRight);
-    encoderRightB.rise(&updateRight);
-    encoderRightB.fall(&updateRight);
+    // encoderRightB.rise(&updateRight);
+    // encoderRightB.fall(&updateRight);
     
     pc.baud(115200);
     wait(0.01);
@@ -52,8 +52,6 @@ int main()
             pc.scanf("%s", rawJson);
             DeserializationError err = deserializeJson(doc, rawJson);
             
-            printf("raw: %s\n\r", rawJson);
-
             if (!err) { 
                 if (doc.containsKey("motorLeft"))
                     motorLeft = (float)doc["motorLeft"];
@@ -76,6 +74,8 @@ int main()
                     motorRight.tuneD((float)doc["tune_d"]);     
                 }     
             }
+            
+            printf("%f,%f\n", motorLeft.getSpeedEstimate(), motorRight.getSpeedEstimate());
         }
     }
 }

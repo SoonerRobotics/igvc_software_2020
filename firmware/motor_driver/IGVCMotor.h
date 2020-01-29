@@ -1,11 +1,15 @@
 #ifndef IGVCMOTORH
 #define IGVCMOTORH
 
-#define MOTOR_UPDATE_RATE 40 // Frequency that motor PID is updated (Hz)
+#define MOTOR_UPDATE_RATE 80 // Frequency that motor PID is updated (Hz)
 #define MAX_SPEED 2.2f // (m/s)
 #define PULSES_PER_REV 2400 // (revs)
 #define LINEAR_PER_REV 0.254f // Wheel radius (m)
+#define MILLIS_TO_FULL 90 // Milliseconds to go from 0 output speed to 1
+#define LPIIR_DECAY 0.1f // Decay rate of low pass filter on velocity
+
 #define PI 3.14159265f
+#define INCREMENT_AMT (1000.0f / (MILLIS_TO_FULL * MOTOR_UPDATE_RATE))
 
 #define PREV_MASK 0x1 // Mask for the previous state in determining direction of rotation.
 #define CURR_MASK 0x2 // Mask for the current state in determining direction of rotation.
@@ -23,6 +27,7 @@ class IGVCMotor {
             this->pulses = 0;
             this->targetSpeed = 0.0f;
             this->curOutput = 0.0f;
+            this->speedEstimate = 0.0f;
             
             // PID values
             this->integrator = 0.0f;
@@ -33,9 +38,9 @@ class IGVCMotor {
             this->last_state = 0.0f;
             
             // Equation constants
-            this->kP = 0.005f;
+            this->kP = 0.05f;
             this->kI = 0.0f;
-            this->kD = 0.00005f;
+            this->kD = 0.0001f;
         }
         
         void output(float speed) {
@@ -46,17 +51,15 @@ class IGVCMotor {
         void pulse(int left, int right) {
             currState_ = (left << 1) | (right);
             
-            //Entered a new valid state.
-            if (((currState_ ^ prevState_) != INVALID) && (currState_ != prevState_)) {
-                //2 bit state. Right hand bit of prev XOR left hand bit of current
-                //gives 0 if clockwise rotation and 1 if counter clockwise rotation.
-                int change = (prevState_ & PREV_MASK) ^ ((currState_ & CURR_MASK) >> 1);
-    
-                if (change == 0) {
-                    change = -1;
-                }
-    
-                pulses -= change;
+            //11->00->11->00 is counter clockwise rotation or "forward".
+            if ((prevState_ == 0x3 && currState_ == 0x0) ||
+                    (prevState_ == 0x0 && currState_ == 0x3)) {
+                this->pulses++;
+            }
+            //10->01->10->01 is clockwise rotation or "backward".
+            else if ((prevState_ == 0x2 && currState_ == 0x1) ||
+                     (prevState_ == 0x1 && currState_ == 0x2)) {
+                this->pulses--;
             }
             
             prevState_ = currState_;
@@ -64,7 +67,10 @@ class IGVCMotor {
         
         // Poll to update PID
         void update() {
-            float output = this->updatePID(this->targetSpeed, this->pulses / (float)PULSES_PER_REV * 2.0 * PI * LINEAR_PER_REV * MOTOR_UPDATE_RATE);
+            float instantaneousSpeed = this->pulses / (float)PULSES_PER_REV * 2.0 * PI * LINEAR_PER_REV * MOTOR_UPDATE_RATE;
+            this->speedEstimate += (1.0f - LPIIR_DECAY) * (instantaneousSpeed - this->speedEstimate); // Low pass filter our speed estimate
+            
+            float output = this->updatePID(this->targetSpeed, this->speedEstimate);
             curOutput += output;
             curOutput = clamp(curOutput, -1.0, 1.0);
 
@@ -72,18 +78,18 @@ class IGVCMotor {
             
             this->pulses = 0;
             
-            if (curOutput < 0.05f && curOutput > -0.05f) { // break
+            if (curOutput < 0.01f && curOutput > -0.01f) { // break
                 motorA->write(0);
                 motorB->write(0);
                 pwmPin->write(0.0f);
             } else if (curOutput > 0.0f) { // forward
                 motorA->write(0);
                 motorB->write(1);
-                pwmPin->write(curOutput);
+                pwmPin->write(0.05f + curOutput * 0.95f);
             } else { // reverse
                 motorA->write(1);
                 motorB->write(0);
-                pwmPin->write(-curOutput);
+                pwmPin->write(0.05f + (-curOutput) * 0.95f);
             }  
         }
         
@@ -97,6 +103,10 @@ class IGVCMotor {
         
         void tuneD(float d) {
             this->kD = d;
+        }
+        
+        float getSpeedEstimate() {
+            return this->speedEstimate;
         }
         
         IGVCMotor& operator= (float v) {
@@ -115,6 +125,8 @@ class IGVCMotor {
         
         float curOutput;
         float targetSpeed;
+        
+        float speedEstimate;
         
         // PID Values
         float integrator;
@@ -157,7 +169,7 @@ class IGVCMotor {
             
             // Sum P, I, D to get the result of the equation
             // Bind the output if needed
-            result = clamp(P + I + D, -.6f, .6f);
+            result = clamp(P + I + D, -INCREMENT_AMT, INCREMENT_AMT);
             
             // Update timing and increment to the next state
             this->last_state = cur_state;
