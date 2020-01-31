@@ -23,18 +23,27 @@ def c_space_callback(c_space):
     # Get the grid data
     grid_data = c_space.data
 
+    # Make a costmap
+    cost_map = [0] * 200 * 200
+
     # Find the best position
     best_pos = (0,0)
     best_pos_cost = 1000000
 
-    # only look forward
-    for row in range(100):
+    # Only look forward for the goal
+    for row in range(101):
         for col in range(200):
+            cost_map[(row * 200) + col] = grid_data[(row * 200) + col]
             if grid_data[(row * 200) +  col] == 0:
                 new_cost = abs(row-75) + abs(col-100)
                 if new_cost < best_pos_cost:
                     best_pos_cost = new_cost
                     best_pos = (row, col)
+
+    # Consider backwards to be an obstacle
+    for row in range(101, 200):
+        for col in range(200):
+            cost_map[(row*200) + col] = 100
 
     print "target:"
     print best_pos
@@ -50,12 +59,13 @@ def c_space_callback(c_space):
     # MOVING TARGET D*LITE
     # If this is the first time receiving a map, initialize the path planner and plan the first path
     if True: #map_init is False:
-        planner.initialize(200, 200, (100, 100), best_pos, grid_data)
+        planner.initialize(200, 200, (100, 100), best_pos, cost_map)
         path = planner.plan()
     # Otherwise, replan the path
     else:
+        # TODO: figure out how to do this
         # Request the planner replan the path
-        path = planner.replan(config_space.tolist(), (100, 100), best_pos, grid_data)
+        path = planner.replan(config_space.tolist(), (100, 100), best_pos, cost_map)
 
 
     print "path:"
@@ -71,6 +81,13 @@ def c_space_callback(c_space):
         path_msg = copy.deepcopy(c_space)
         path_msg.data = path_space
 
+        path_pub.publish(path_msg)
+    else:
+        path_msg = copy.deepcopy(c_space)
+        data = planner.get_search_space_map()
+        data[(best_pos[0]*200) + best_pos[1]] = 100
+        print(str(c_space.info.width) + " x " + str(c_space.info.height))
+        path_msg.data = data
         path_pub.publish(path_msg)
 
 

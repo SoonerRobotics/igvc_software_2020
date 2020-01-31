@@ -105,7 +105,7 @@ class OpenList:
         """ Get the top value from the list """
         if len(self.min_heap) == 0:
             return None
-        return heapq.heappop(self.min_heap)
+        return self.min_heap[0]
 
     def contains(self, val):
         return val in self.min_heap
@@ -135,9 +135,9 @@ class SearchSpace:
 
     def get_successors(self, node):
         succ = []
-        for i in range(node.row-1, node.row+1):
-            for j in range(node.col-1, node.col+1):
-                if i >= 0 and i < self.H and j >=0 and j < self.W and (i != node.row or j != node.col):
+        for i in range(node.row-1, node.row+2):
+            for j in range(node.col-1, node.col+2):
+                if i >= 0 and i < self.H and j >= 0 and j < self.W and (i != node.row or j != node.col):
                     succ.append(self.grid[i][j])
 
         return succ
@@ -147,11 +147,23 @@ class SearchSpace:
             for j in range(self.W):
                 rhs = self.grid[i][j].rhs
                 if rhs < Node.INFINITY:
-                    print("(", i, ",", j, "): ", rhs)
-            print ""
+                    print("(" + str(i) + "," + str(j) + "): " + str(rhs))
+        print "----"
 
-    def load_search_space_from_map(self, map):
-        pass
+    def get_search_space_rhs_map(self):
+        rhs_map_data = [0] * self.W * self.H
+        for i in range(self.H):
+            for j in range(self.W):
+                rhs = self.grid[i][j].rhs
+                if rhs < Node.INFINITY:
+                    rhs_map_data[(i * self.W) + j] = int(rhs)
+        return rhs_map_data
+
+    def load_search_space_from_map(self, map_data):
+        for i in range(self.H):
+            for j in range(self.W):
+                if map_data[(self.H * i) + j] != 0:
+                    self.grid[i][j].set_cost(Node.INFINITY)
 
 
 # Algorithm: http://idm-lab.org/bib/abstracts/papers/aamas10a.pdf
@@ -339,7 +351,7 @@ class mt_dstar_lite:
 
         # If the goal has a RHS of infinity, then there is no path
         if self.goal_node.rhs >= Node.INFINITY:
-            self.search_space.print_search_space_rhs()
+            #self.search_space.print_search_space_rhs()
             print("Get rekt " + str(self.goal_node.rhs))
             return None
 
@@ -372,4 +384,5 @@ class mt_dstar_lite:
         # Plan the path after adjustments
         return self.plan()
 
-
+    def get_search_space_map(self):
+        return self.search_space.get_search_space_rhs_map()
