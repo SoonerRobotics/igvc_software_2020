@@ -8,6 +8,13 @@ pos = None
 heading = None
 publy = rospy.Publisher('/igvc/motors_raw', motors, queue_size=1)
 pp = PurePursuit()
+pp.add_point(-97.4386215209961, 35.1949625611)
+pp.add_point(-97.4386215209961, 35.1950436830485)
+pp.add_point(-97.4388850511561, 35.1950436830485)
+pp.add_point(-97.4388850511561, 35.194881439209)
+pp.add_point(-97.4387313252294, 35.194935520488)
+pp.add_point(-97.4386215209961, 35.194881439209)
+pp.add_point(-97.4386215209961, 35.1949625611)
 
 def ekf_update(data):
     global pos, heading
@@ -21,7 +28,11 @@ def path_update(data):
 def timer_callback(event):
     if pos is None or heading is None:
         return
-    lookahead = pp.get_lookahead_point(pos[0], pos[1], 0.00005) # radius about 1 meter
+    lookahead = None
+    radius = 0.00002
+    while lookahead is None:
+        lookahead = pp.get_lookahead_point(pos[0], pos[1], radius) # radius about 1 meter
+        radius *= 1.5
     if lookahead is not None:
         heading_to_la = 90 - math.atan2(lookahead[1] - pos[1], lookahead[0] - pos[0]) * 180 / (math.pi)
         if heading_to_la < 0:
