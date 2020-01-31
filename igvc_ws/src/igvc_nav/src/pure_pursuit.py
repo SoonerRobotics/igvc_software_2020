@@ -8,7 +8,7 @@ class PurePursuit:
     def add_point(self, x, y):
         self.path.append((x,y))
 
-    def set_points(self, pts)
+    def set_points(self, pts):
         self.path = pts
 
     def get_lookahead_point(self, x, y, r):
