@@ -57,6 +57,7 @@ add_message_files(
   gps.msg
   imuodom.msg
   ekf_convergence.msg
+  path.msg
 )
 
 ## Generate services in the 'srv' folder
