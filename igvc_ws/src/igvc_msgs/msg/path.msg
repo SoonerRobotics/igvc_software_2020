@@ -1,1 +1,1 @@
-igvc_msgs/gps[] points
+geometry_msgs/Point[] points

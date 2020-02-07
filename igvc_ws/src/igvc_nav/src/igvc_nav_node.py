@@ -2,7 +2,7 @@
 import rospy
 import math
 from pure_pursuit import PurePursuit
-from igvc_msgs.msg import ekf_state, gps, path, motors
+from igvc_msgs.msg import ekf_state, path, motors
 
 pos = None
 heading = None
@@ -23,7 +23,7 @@ def ekf_update(data):
 
 def path_update(data):
     global pp
-    pp.set_points([(_gps.latitude, _gps.longitude) for _gps in data.points])
+    pp.set_points([(_point.x, _point.y) for _point in data.points])
 
 def timer_callback(event):
     if pos is None or heading is None:
