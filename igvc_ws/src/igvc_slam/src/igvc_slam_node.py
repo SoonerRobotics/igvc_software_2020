@@ -13,6 +13,7 @@ config_pub = rospy.Publisher("/igvc_slam/config_space", OccupancyGrid, queue_siz
 metadata = MapMetaData()
 lidar_config_data = [0] * (200 * 200)
 lanes_camera_config_data = [0] * (200 * 200)
+lidar_hidden_layer = [0] * (200 * 200)
 
 # Initializiation
 lidar_init = False
@@ -20,17 +21,17 @@ lidar_init = False
 
 def lidar_callback(data):
     # use the global vars
-    global lidar_init
-    global lidar_config_data
-    global metadata
+    global lidar_init, lidar_config_data, lidar_hidden_layer, metadata
 
-    lidar_config_data = [0] * (200 * 200)
+    # Reset the hidden layer
+    lidar_hidden_layer = [0] * (200 * 200)
 
     # HACK: eventually set this to be based on the map size and stuff
     metadata = MapMetaData(map_load_time = data.info.map_load_time, resolution=data.info.resolution,
                             width = data.info.width, height = data.info.height, origin = data.info.origin)
     lidar_init = True
 
+    # Update the hidden layer before applying the new map to the current configuration space
     for x in range(200):
         for y in range(200):
             if data.data[x + y * 200] > 0:
@@ -40,10 +41,12 @@ def lidar_callback(data):
                         new_x = 199 - (x + x_i)
                         new_y = 199 - (y + y_i)
                         if 0 <= new_x < 200 and 0 <= new_y < 200 and dist <= 25:
-                            lidar_config_data[(x + x_i) + 200 * (y + y_i)] = 100
+                            lidar_hidden_layer[(x + x_i) + 200 * (y + y_i)] = 100
 
-
-
+    # After updating the hidden layer, swap the hidden layer to the foreground to apply the configuration space
+    tmp_cfg_space = lidar_config_data
+    lidar_config_data = lidar_hidden_layer
+    lidar_hidden_layer = tmp_cfg_space
 
 
 def lanes_camera_callback():
@@ -53,9 +56,7 @@ def lanes_camera_callback():
 # TODO: currently this whole thing is set to use the most recent map frames from each perception unit (which is fine for now). In the future the sizing will change as the map grows.
 def config_space_callback(event):
     # Use the global data
-    global lidar_init
-    global lidar_config_data
-    global metadata
+    global lidar_init, lidar_config_data, metadata
 
     if lidar_init is True:
         # TODO: Make this add the lidar config space to the camera config space
