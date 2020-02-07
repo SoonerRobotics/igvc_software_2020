@@ -3,7 +3,7 @@
 import rospy
 from std_msgs.msg import String
 from nav_msgs.msg import OccupancyGrid
-from igvc_msgs.msg import motors
+from igvc_msgs.msg import motors, ekf_state
 import copy
 import numpy as np
 from mt_dstar_lite import mt_dstar_lite
@@ -15,10 +15,33 @@ path_pub = rospy.Publisher("/igvc_nav/path_map", OccupancyGrid, queue_size=10)
 map_init = False
 planner = mt_dstar_lite()
 
+# Localization tracking
+ekf_offset = (0, 0)
+prev_coord = (0, 0)
+ekf_init = False
+GRID_SIZE = 0.1     # Map block size in meters
+
+
+# TODO: Do this as a service instead so we can get the EKF offset when the map updates rather than accumulating it ourselves
+def ekf_callback(ekf_data):
+    global prev_coord, ekf_init, ekf_offset
+
+    # Extract coordinates
+    xk = ekf_data.x_k
+    x = xk[3]
+    y = xk[4]
+
+    # Determine offset (in blocks)
+    ekf_offset = ((x - prev_coord[0]) / GRID_SIZE, (y - prev_coord[1]) / GRID_SIZE)
+
+    # Set the EKF to be initialized
+    ekf_init = True
+# TODO: Do this as a service instead so we can get the EKF offset when the map updates rather than accumulating it ourselves
+
+
 
 def c_space_callback(c_space):
-    global planner
-    global map_init
+    global planner, map_init, ekf_init
 
     # Get the grid data
     grid_data = c_space.data
@@ -96,7 +119,8 @@ def mt_dstar_node():
     rospy.init_node("mt_dstar_node")
 
     # Subscribe to necessary topics
-    rospy.Subscriber("/igvc_slam/config_space", OccupancyGrid, c_space_callback, queue_size=1)
+    rospy.Subscriber("/igvc_slam/config_space", OccupancyGrid, c_space_callback, queue_size=1)  # Mapping
+    rospy.Subscriber("/igvc_ekf/filter_output", ekf_state, ekf_callback, queue_size = 1)        # Localization
 
     # Wait for topic updates
     rospy.spin()

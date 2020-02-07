@@ -165,6 +165,60 @@ class SearchSpace:
                 if map_data[(self.H * i) + j] != 0:
                     self.grid[i][j].set_cost(Node.INFINITY)
 
+    def get_deleteable_nodes(self, start_node):
+        # Define the lists for this search
+        parent_set = set([start_node])
+        frontier = [start_node]
+        reset_list = []
+
+        # Expand the frontier using BFS until there is nothing left to explore
+        while len(frontier) > 0:
+            # Take the next node off the frontier list
+            node = frontier.pop(0)
+
+            # Look through the successors of this node
+            for succ in self.get_successors(node):
+                # If this successor has a parent in the parent set, we cannot delete it
+                # Since it is part of the subtree, we should add it to the parent set as well
+                if succ.par in parent_set:
+                    parent_set.add(succ)
+                # Otherwise, this node is not in the subtree rooted at the start node, so add
+                # it to the list of nodes to reset
+                else:
+                    reset_list.append(succ)
+
+                # As long as the node has a non infinite RHS, we should add it to the frontier
+                if succ.rhs < Node.INFINITY:
+                    frontier.append(succ)
+
+        # Return the nodes that can be reset
+        return reset_list
+
+
+    def update_map(self, new_map):
+        """ updates the map for the search space """
+        # Create a list for nodes with changed cost
+        changed_nodes = []
+
+        # Go through and update each cell
+        for i in range(self.H):
+            for j in range(self.W):
+                # Get the old cost
+                old_cost = self.grid[i][j].cost
+
+                # Update the cost of the node
+                if new_map[(self.H * i) + j] != 0:
+                    self.grid[i][j].set_cost(Node.INFINITY)
+                else:
+                    self.grid[i][j].set_cost(0)
+
+                # Detect if the node changed costs
+                if self.grid[i][j].cost != old_cost:
+                    changed_nodes.append(self.grid[i][j])
+
+        # Return the nodes that have changed so the edge costs can be updated
+        return changed_nodes
+
 
 # Algorithm: http://idm-lab.org/bib/abstracts/papers/aamas10a.pdf
 class mt_dstar_lite:
@@ -215,7 +269,7 @@ class mt_dstar_lite:
 
     def calculate_key(self, node):
         """ Calculates a node key based on its G and RHS values, as well as the distance to the goal """
-        return (min(node.G, node.rhs) + self.heuristic(node, self.goal_node), min(node.G, node.rhs))
+        return (min(node.G, node.rhs) + self.heuristic(node, self.goal_node) + self.km, min(node.G, node.rhs))
 
 
     def heuristic(self, node1, node2):
@@ -302,18 +356,39 @@ class mt_dstar_lite:
                             s_node.set_par(s_par_node)
                     self.update_state(s_node)
 
-    def basic_deletion(self):
-        """ """
-        self.start_node.set_par(None)
-
-        # Calculate the
-        #self.old_start.set_rhs()
 
     def optimized_deletion(self):
         """ """
         # Initialize deletion
-        self.deleted_list = set()
+        self.deleted_list = []
         self.start_node.set_par(None)
+
+        # Go through the nodes in the search tree that aren't on the path from the current start node to the goal node
+        for s_node is self.search_space.get_deleteable_nodes(self.start_node):
+            # Reset the node's data
+            s_node.set_par(None)
+            s_node.set_rhs(Node.INFINITY)
+            s_node.set_g(Node.INFINITY)
+
+            # Get this node off the open list and add it to the deleted list
+            if self.open_list.contains(s_node):
+                self.open_list.delete(s_node)
+
+            # Add this node to the deleted list
+            self.deleted_list.append(s_node)
+
+        # Go through the deleted list and update its costs
+        for node in self.deleted_list:
+            # Get the best cost from the successors
+            for succ_node in self.search_space.get_successors(node):
+                if node.rhs > succ_node.G + self.cost(succ_node, node):
+                    node.set_rhs(succ_node.G + self.cost(succ_node, node))
+                    node.set_par(succ_node)
+
+            # Add the node to the open list if it has a finite cost
+            if node.rhs < Node.INFINITY:
+                node.set_key(self.calculate_key(node))
+                self.open_list.insert(node)
 
 
     def get_best_path(self):
@@ -363,7 +438,7 @@ class mt_dstar_lite:
     # while loop. Therefore, plan() should only be called by an external class the first time we want to plan,
     # and all subsequent external planning requests should be to the following replan() function
 
-    def replan(self, robot_pos, goal_pos):
+    def replan(self, new_map, robot_pos, goal_pos, offset):
         # Get the node the robot is on (row, col is the pos argument)
         self.start_node = self.search_space.get_node(robot_pos)
 
@@ -373,13 +448,43 @@ class mt_dstar_lite:
         # Update the km search parameter
         self.km = self.km + self.heuristic(self.goal_node, self.old_goal)
 
-        # If the robot has moved, delete the nodes that were shifted off the map and move the robot back to its start point
-        # TODO: how do we do this? The robot should always maintain its start position, so we need to be creative with how to make it not do that
+        # If the robot has moved, delete the nodes that need updating and revalue them
         if self.old_start != self.start_node:
+            # Perform optimized deletion to update the out-of-date parts of the search tree
             self.optimized_deletion()
 
-        # Update all changed edge costs
-        # TODO
+            # Shift the map anyways because our environment grows
+            # TODO
+
+        # Update all changed edge costs from the map update
+        for c_node in self.search_space.update_map(new_map):
+            for succ in self.search_space.get_successors(c_node):
+                # If the old cost was bigger than the new cost (i.e., the current cost is low now)
+                if c_node.cost < Node.INFINITY:
+                    if succ != self.start_node and succ.rhs > c_node.G + self.cost(c_node, succ):
+                        succ.set_par(c_node)
+                        succ.set_rhs(c_node.G + self.cost(c_node, succ))
+                # Otherwise the cost has increased and we need to reroute the successors that map to this node
+                else:
+                    # Only update successors that map to the current node (and that aren't the start node)
+                    if succ != self.start_node and succ.par is c_node:
+                        # Set the RHS to be the minimum one-step lookahead
+                        succ_rhs = min([node.G + self.cost(node, s_node) for node in self.search_space.get_successors(s_node)])
+                        succ.set_rhs(succ_rhs)
+
+                        if s_node.rhs >= Node.INFINITY:
+                            succ.set_rhs(Node.INFINITY)
+                            succ.set_par(None)
+                        else:
+                            # Set the parent node pointer based on the parent node that has the minimum path cost to goal from this node
+                            par_nodes = [node for node in self.search_space.get_successors(succ)]
+                            s_par = [node.G + self.cost(node, succ) for node in par_nodes]
+                            s_par_node_idx = s_par.index(min(s_par))
+                            s_par_node = par_nodes[s_par_node_idx]
+                            succ.set_par(s_par_node)
+
+                        # update the state of the successor
+                        self.update_state(succ)
 
         # Plan the path after adjustments
         return self.plan()
