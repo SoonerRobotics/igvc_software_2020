@@ -1,5 +1,5 @@
 // ArduinoJson - arduinojson.org
-// Copyright Benoit Blanchon 2014-2019
+// Copyright Benoit Blanchon 2014-2020
 // MIT License
 
 #pragma once
@@ -26,11 +26,31 @@
 #define ARDUINOJSON_HAS_NULLPTR 0
 #endif
 #ifndef ARDUINOJSON_EMBEDDED_MODE
-#if defined(ARDUINO) || defined(__IAR_SYSTEMS_ICC__) || defined(__XC) || \
-    defined(__ARMCC_VERSION)
+#if defined(ARDUINO)                /* Arduino*/                 \
+    || defined(__IAR_SYSTEMS_ICC__) /* IAR Embedded Workbench */ \
+    || defined(__XC)                /* MPLAB XC compiler */      \
+    || defined(__ARMCC_VERSION)     /* Keil ARM Compiler */      \
+    || defined(__AVR)               /* Atmel AVR8/GNU C Compiler */
 #define ARDUINOJSON_EMBEDDED_MODE 1
 #else
 #define ARDUINOJSON_EMBEDDED_MODE 0
+#endif
+#endif
+#if !defined(ARDUINOJSON_ENABLE_STD_STREAM) && defined(__has_include)
+#if __has_include(<istream>) && \
+    __has_include(<ostream>) && \
+    !defined(min) && \
+    !defined(max)
+#define ARDUINOJSON_ENABLE_STD_STREAM 1
+#else
+#define ARDUINOJSON_ENABLE_STD_STREAM 0
+#endif
+#endif
+#if !defined(ARDUINOJSON_ENABLE_STD_STRING) && defined(__has_include)
+#if __has_include(<string>) && !defined(min) && !defined(max)
+#define ARDUINOJSON_ENABLE_STD_STRING 1
+#else
+#define ARDUINOJSON_ENABLE_STD_STRING 0
 #endif
 #endif
 #if ARDUINOJSON_EMBEDDED_MODE
@@ -102,6 +122,9 @@
 #ifndef ARDUINOJSON_DECODE_UNICODE
 #define ARDUINOJSON_DECODE_UNICODE 0
 #endif
+#ifndef ARDUINOJSON_ENABLE_COMMENTS
+#define ARDUINOJSON_ENABLE_COMMENTS 0
+#endif
 #ifndef ARDUINOJSON_ENABLE_NAN
 #define ARDUINOJSON_ENABLE_NAN 0
 #endif
@@ -126,9 +149,12 @@
 #ifndef ARDUINOJSON_TAB
 #define ARDUINOJSON_TAB "  "
 #endif
-#define ARDUINOJSON_VERSION "6.12.0"
+#ifndef ARDUINOJSON_STRING_BUFFER_SIZE
+#define ARDUINOJSON_STRING_BUFFER_SIZE 32
+#endif
+#define ARDUINOJSON_VERSION "6.14.0"
 #define ARDUINOJSON_VERSION_MAJOR 6
-#define ARDUINOJSON_VERSION_MINOR 12
+#define ARDUINOJSON_VERSION_MINOR 14
 #define ARDUINOJSON_VERSION_REVISION 0
 #define ARDUINOJSON_DO_CONCAT(A, B) A##B
 #define ARDUINOJSON_CONCAT2(A, B) ARDUINOJSON_DO_CONCAT(A, B)
@@ -137,15 +163,22 @@
 #define ARDUINOJSON_CONCAT8(A, B, C, D, E, F, G, H)    \
   ARDUINOJSON_CONCAT2(ARDUINOJSON_CONCAT4(A, B, C, D), \
                       ARDUINOJSON_CONCAT4(E, F, G, H))
-#define ARDUINOJSON_CONCAT11(A, B, C, D, E, F, G, H, I, J, K) \
-  ARDUINOJSON_CONCAT8(A, B, C, D, E, F, G, ARDUINOJSON_CONCAT4(H, I, J, K))
+#define ARDUINOJSON_CONCAT12(A, B, C, D, E, F, G, H, I, J, K, L) \
+  ARDUINOJSON_CONCAT8(A, B, C, D, E, F, G,                       \
+                      ARDUINOJSON_CONCAT4(H, I, J, ARDUINOJSON_CONCAT2(K, L)))
 #define ARDUINOJSON_NAMESPACE                                            \
-  ARDUINOJSON_CONCAT11(                                                  \
+  ARDUINOJSON_CONCAT12(                                                  \
       ArduinoJson, ARDUINOJSON_VERSION_MAJOR, ARDUINOJSON_VERSION_MINOR, \
       ARDUINOJSON_VERSION_REVISION, _, ARDUINOJSON_USE_LONG_LONG,        \
       ARDUINOJSON_USE_DOUBLE, ARDUINOJSON_DECODE_UNICODE,                \
       ARDUINOJSON_ENABLE_NAN, ARDUINOJSON_ENABLE_INFINITY,               \
-      ARDUINOJSON_ENABLE_PROGMEM)
+      ARDUINOJSON_ENABLE_PROGMEM, ARDUINOJSON_ENABLE_COMMENTS)
+#ifdef ARDUINOJSON_DEBUG
+#include <assert.h>
+#define ARDUINOJSON_ASSERT(X) assert(X)
+#else
+#define ARDUINOJSON_ASSERT(X) ((void)0)
+#endif
 #include <stddef.h>
 namespace ARDUINOJSON_NAMESPACE {
 class MemoryPool;
@@ -180,6 +213,7 @@ class CollectionData {
   size_t memoryUsage() const;
   size_t nesting() const;
   size_t size() const;
+  void movePointers(ptrdiff_t stringDistance, ptrdiff_t variantDistance);
  private:
   VariantSlot *getSlot(size_t index) const;
   template <typename TAdaptedString>
@@ -201,14 +235,6 @@ inline bool arrayEquals(const CollectionData *lhs, const CollectionData *rhs) {
   if (!lhs || !rhs) return false;
   return lhs->equalsArray(*rhs);
 }
-}  // namespace ARDUINOJSON_NAMESPACE
-#ifdef ARDUINOJSON_DEBUG
-#include <assert.h>
-#define ARDUINOJSON_ASSERT(X) assert(X)
-#else
-#define ARDUINOJSON_ASSERT(X) ((void)0)
-#endif
-namespace ARDUINOJSON_NAMESPACE {
 inline bool isAligned(void *ptr) {
   const size_t mask = sizeof(void *) - 1;
   size_t addr = reinterpret_cast<size_t>(ptr);
@@ -217,6 +243,11 @@ inline bool isAligned(void *ptr) {
 inline size_t addPadding(size_t bytes) {
   const size_t mask = sizeof(void *) - 1;
   return (bytes + mask) & ~mask;
+}
+template <typename T>
+inline T *addPadding(T *p) {
+  size_t address = addPadding(reinterpret_cast<size_t>(p));
+  return reinterpret_cast<T *>(address);
 }
 template <size_t bytes>
 struct AddPadding {
@@ -441,7 +472,7 @@ typedef unsigned long UInt;
 #endif
 enum {
   VALUE_MASK = 0x7F,
-  OWNERSHIP_BIT = 0x01,
+  VALUE_IS_OWNED = 0x01,
   VALUE_IS_NULL = 0,
   VALUE_IS_LINKED_RAW = 0x02,
   VALUE_IS_OWNED_RAW = 0x03,
@@ -471,7 +502,6 @@ union VariantContent {
   } asRaw;
 };
 typedef conditional<sizeof(void*) <= 2, int8_t, int16_t>::type VariantSlotDiff;
-class VairantData;
 class VariantSlot {
   VariantContent _content;
   uint8_t _flags;
@@ -527,7 +557,16 @@ class VariantSlot {
     _flags = 0;
     _key = 0;
   }
+  void movePointers(ptrdiff_t stringDistance, ptrdiff_t variantDistance) {
+    if (_flags & KEY_IS_OWNED) _key += stringDistance;
+    if (_flags & VALUE_IS_OWNED) _content.asString += stringDistance;
+    if (_flags & COLLECTION_MASK)
+      _content.asCollection.movePointers(stringDistance, variantDistance);
+  }
 };
+}  // namespace ARDUINOJSON_NAMESPACE
+#include <string.h>
+namespace ARDUINOJSON_NAMESPACE {
 class MemoryPool {
  public:
   MemoryPool(char* buf, size_t capa)
@@ -593,6 +632,22 @@ class MemoryPool {
   void* operator new(size_t, void* p) {
     return p;
   }
+  ptrdiff_t squash() {
+    char* new_right = addPadding(_left);
+    if (new_right >= _right) return 0;
+    size_t right_size = static_cast<size_t>(_end - _right);
+    memmove(new_right, _right, right_size);
+    ptrdiff_t bytes_reclaimed = _right - new_right;
+    _right = new_right;
+    _end = new_right + right_size;
+    return bytes_reclaimed;
+  }
+  void movePointers(ptrdiff_t offset) {
+    _begin += offset;
+    _left += offset;
+    _right += offset;
+    _end += offset;
+  }
  private:
   StringSlot* allocStringSlot() {
     return allocRight<StringSlot>();
@@ -611,9 +666,6 @@ template <typename T>
 struct IsString<const T> : IsString<T> {};
 template <typename T>
 struct IsString<T&> : IsString<T> {};
-}  // namespace ARDUINOJSON_NAMESPACE
-#include <string.h>
-namespace ARDUINOJSON_NAMESPACE {
 inline int8_t safe_strcmp(const char* a, const char* b) {
   if (a == b) return 0;
   if (!a) return -1;
@@ -1330,7 +1382,7 @@ class VariantData {
     }
   }
   bool equals(const VariantData &other) const {
-    if ((type() | OWNERSHIP_BIT) != (other.type() | OWNERSHIP_BIT))
+    if ((type() | VALUE_IS_OWNED) != (other.type() | VALUE_IS_OWNED))
       return false;
     switch (type()) {
       case VALUE_IS_LINKED_STRING:
@@ -1533,6 +1585,11 @@ class VariantData {
     VariantData *var = _content.asCollection.get(key);
     if (var) return var;
     return _content.asCollection.add(key, pool);
+  }
+  void movePointers(ptrdiff_t stringDistance, ptrdiff_t variantDistance) {
+    if (_flags & VALUE_IS_OWNED) _content.asString += stringDistance;
+    if (_flags & COLLECTION_MASK)
+      _content.asCollection.movePointers(stringDistance, variantDistance);
   }
  private:
   uint8_t type() const {
@@ -1822,51 +1879,14 @@ class VariantComparisons {
 namespace ARDUINOJSON_NAMESPACE {
 template <typename>
 struct IsWriteableString : false_type {};
-template <typename TString>
-class DynamicStringWriter {};
 #if ARDUINOJSON_ENABLE_ARDUINO_STRING
 template <>
-struct IsWriteableString<String> : true_type {};
-template <>
-class DynamicStringWriter<String> {
- public:
-  DynamicStringWriter(String &str) : _str(&str) {}
-  size_t write(uint8_t c) {
-    _str->operator+=(static_cast<char>(c));
-    return 1;
-  }
-  size_t write(const uint8_t *s, size_t n) {
-    _str->reserve(_str->length() + n);
-    while (n > 0) {
-      _str->operator+=(static_cast<char>(*s++));
-      n--;
-    }
-    return n;
-  }
- private:
-  String *_str;
-};
+struct IsWriteableString< ::String> : true_type {};
 #endif
 #if ARDUINOJSON_ENABLE_STD_STRING
 template <typename TCharTraits, typename TAllocator>
 struct IsWriteableString<std::basic_string<char, TCharTraits, TAllocator> >
     : true_type {};
-template <typename TCharTraits, typename TAllocator>
-class DynamicStringWriter<std::basic_string<char, TCharTraits, TAllocator> > {
-  typedef std::basic_string<char, TCharTraits, TAllocator> string_type;
- public:
-  DynamicStringWriter(string_type &str) : _str(&str) {}
-  size_t write(uint8_t c) {
-    _str->operator+=(static_cast<char>(c));
-    return 1;
-  }
-  size_t write(const uint8_t *s, size_t n) {
-    _str->append(reinterpret_cast<const char *>(s), n);
-    return n;
-  }
- private:
-  string_type *_str;
-};
 #endif
 class ArrayRef;
 class ArrayConstRef;
@@ -1956,7 +1976,7 @@ class ElementProxy;
 template <typename TArray>
 class ArrayShortcuts {
  public:
-  FORCE_INLINE ElementProxy<const TArray &> operator[](size_t index) const;
+  FORCE_INLINE ElementProxy<TArray> operator[](size_t index) const;
   FORCE_INLINE ObjectRef createNestedObject() const;
   FORCE_INLINE ArrayRef createNestedArray() const;
   template <typename T>
@@ -1984,13 +2004,12 @@ class ObjectShortcuts {
   FORCE_INLINE typename enable_if<IsString<TChar *>::value, bool>::type
   containsKey(TChar *key) const;
   template <typename TString>
-  FORCE_INLINE
-      typename enable_if<IsString<TString>::value,
-                         MemberProxy<const TObject &, const TString &> >::type
-      operator[](const TString &key) const;
+  FORCE_INLINE typename enable_if<IsString<TString>::value,
+                                  MemberProxy<TObject, TString> >::type
+  operator[](const TString &key) const;
   template <typename TChar>
   FORCE_INLINE typename enable_if<IsString<TChar *>::value,
-                                  MemberProxy<const TObject &, TChar *> >::type
+                                  MemberProxy<TObject, TChar *> >::type
   operator[](TChar *key) const;
   template <typename TString>
   FORCE_INLINE ArrayRef createNestedArray(const TString &key) const;
@@ -2189,6 +2208,14 @@ class VariantRefBase {
   is() const {
     return variantIsObject(_data);
   }
+#if ARDUINOJSON_HAS_NULLPTR
+  template <typename T>
+  FORCE_INLINE
+      typename enable_if<is_same<T, decltype(nullptr)>::value, bool>::type
+      is() const {
+    return variantIsNull(_data);
+  }
+#endif
   FORCE_INLINE bool isNull() const {
     return variantIsNull(_data);
   }
@@ -2475,6 +2502,9 @@ class ArrayRefBase {
   }
   FORCE_INLINE bool isNull() const {
     return _data == 0;
+  }
+  FORCE_INLINE operator bool() const {
+    return _data != 0;
   }
   FORCE_INLINE size_t memoryUsage() const {
     return _data ? _data->memoryUsage() : 0;
@@ -2775,6 +2805,9 @@ class ObjectRefBase {
   FORCE_INLINE bool isNull() const {
     return _data == 0;
   }
+  FORCE_INLINE operator bool() const {
+    return _data != 0;
+  }
   FORCE_INLINE size_t memoryUsage() const {
     return _data ? _data->memoryUsage() : 0;
   }
@@ -3038,11 +3071,6 @@ class ElementProxy : public VariantOperators<ElementProxy<TArray> >,
   TArray _array;
   const size_t _index;
 };
-template <typename TArray>
-inline ElementProxy<const TArray&> ArrayShortcuts<TArray>::operator[](
-    size_t index) const {
-  return ElementProxy<const TArray&>(*impl(), index);
-}
 }  // namespace ARDUINOJSON_NAMESPACE
 #ifdef _MSC_VER
 #pragma warning(pop)
@@ -3162,20 +3190,6 @@ class MemberProxy : public VariantOperators<MemberProxy<TObject, TStringRef> >,
   TObject _object;
   TStringRef _key;
 };
-template <typename TObject>
-template <typename TString>
-inline typename enable_if<IsString<TString>::value,
-                          MemberProxy<const TObject &, const TString &> >::type
-    ObjectShortcuts<TObject>::operator[](const TString &key) const {
-  return MemberProxy<const TObject &, const TString &>(*impl(), key);
-}
-template <typename TObject>
-template <typename TString>
-inline typename enable_if<IsString<TString *>::value,
-                          MemberProxy<const TObject &, TString *> >::type
-    ObjectShortcuts<TObject>::operator[](TString *key) const {
-  return MemberProxy<const TObject &, TString *>(*impl(), key);
-}
 }  // namespace ARDUINOJSON_NAMESPACE
 #ifdef _MSC_VER
 #pragma warning(pop)
@@ -3268,11 +3282,10 @@ class JsonDocument : public Visitable {
     return !getMember(key).isUndefined();
   }
   template <typename TString>
-  FORCE_INLINE
-      typename enable_if<IsString<TString>::value,
-                         MemberProxy<JsonDocument&, const TString&> >::type
-      operator[](const TString& key) {
-    return MemberProxy<JsonDocument&, const TString&>(*this, key);
+  FORCE_INLINE typename enable_if<IsString<TString>::value,
+                                  MemberProxy<JsonDocument&, TString> >::type
+  operator[](const TString& key) {
+    return MemberProxy<JsonDocument&, TString>(*this, key);
   }
   template <typename TChar>
   FORCE_INLINE typename enable_if<IsString<TChar*>::value,
@@ -3374,7 +3387,6 @@ class JsonDocument : public Visitable {
   void replacePool(MemoryPool pool) {
     _pool = pool;
   }
- private:
   VariantRef getVariant() {
     return VariantRef(&_pool, &_data);
   }
@@ -3390,11 +3402,14 @@ class AllocatorOwner {
   AllocatorOwner() {}
   AllocatorOwner(const AllocatorOwner& src) : _allocator(src._allocator) {}
   AllocatorOwner(TAllocator allocator) : _allocator(allocator) {}
-  void* allocate(size_t n) {
-    return _allocator.allocate(n);
+  void* allocate(size_t size) {
+    return _allocator.allocate(size);
   }
-  void deallocate(void* p) {
-    _allocator.deallocate(p);
+  void deallocate(void* ptr) {
+    _allocator.deallocate(ptr);
+  }
+  void* reallocate(void* ptr, size_t new_size) {
+    return _allocator.reallocate(ptr, new_size);
   }
  private:
   TAllocator _allocator;
@@ -3433,6 +3448,16 @@ class BasicJsonDocument : AllocatorOwner<TAllocator>, public JsonDocument {
     set(src);
     return *this;
   }
+  void shrinkToFit() {
+    ptrdiff_t bytes_reclaimed = _pool.squash();
+    if (bytes_reclaimed == 0) return;
+    void* old_ptr = _pool.buffer();
+    void* new_ptr = this->reallocate(old_ptr, _pool.capacity());
+    ptrdiff_t ptr_offset =
+        static_cast<char*>(new_ptr) - static_cast<char*>(old_ptr);
+    _pool.movePointers(ptr_offset);
+    _data.movePointers(ptr_offset, ptr_offset - bytes_reclaimed);
+  }
  private:
   MemoryPool allocPool(size_t requiredSize) {
     size_t capa = addPadding(requiredSize);
@@ -3448,11 +3473,14 @@ class BasicJsonDocument : AllocatorOwner<TAllocator>, public JsonDocument {
   }
 };
 struct DefaultAllocator {
-  void* allocate(size_t n) {
-    return malloc(n);
+  void* allocate(size_t size) {
+    return malloc(size);
   }
-  void deallocate(void* p) {
-    free(p);
+  void deallocate(void* ptr) {
+    free(ptr);
+  }
+  void* reallocate(void* ptr, size_t new_size) {
+    return realloc(ptr, new_size);
   }
 };
 typedef BasicJsonDocument<DefaultAllocator> DynamicJsonDocument;
@@ -3494,6 +3522,11 @@ inline ArrayRef ArrayShortcuts<TArray>::createNestedArray() const {
 template <typename TArray>
 inline ObjectRef ArrayShortcuts<TArray>::createNestedObject() const {
   return impl()->addElement().template to<ObjectRef>();
+}
+template <typename TArray>
+inline ElementProxy<TArray> ArrayShortcuts<TArray>::operator[](
+    size_t index) const {
+  return ElementProxy<TArray>(*impl(), index);
 }
 template <typename T, size_t N>
 inline bool copyArray(T (&src)[N], ArrayRef dst) {
@@ -3669,6 +3702,20 @@ inline size_t CollectionData::nesting() const {
 inline size_t CollectionData::size() const {
   return slotSize(_head);
 }
+template <typename T>
+inline void movePointer(T*& p, ptrdiff_t offset) {
+  if (!p) return;
+  p = reinterpret_cast<T*>(
+      reinterpret_cast<void*>(reinterpret_cast<char*>(p) + offset));
+  ARDUINOJSON_ASSERT(isAligned(p));
+}
+inline void CollectionData::movePointers(ptrdiff_t stringDistance,
+                                         ptrdiff_t variantDistance) {
+  movePointer(_head, variantDistance);
+  movePointer(_tail, variantDistance);
+  for (VariantSlot* slot = _head; slot; slot = slot->next())
+    slot->movePointers(stringDistance, variantDistance);
+}
 template <typename TObject>
 template <typename TString>
 inline ArrayRef ObjectShortcuts<TObject>::createNestedArray(
@@ -3703,6 +3750,20 @@ template <typename TChar>
 inline typename enable_if<IsString<TChar*>::value, bool>::type
 ObjectShortcuts<TObject>::containsKey(TChar* key) const {
   return !impl()->getMember(key).isUndefined();
+}
+template <typename TObject>
+template <typename TString>
+inline typename enable_if<IsString<TString*>::value,
+                          MemberProxy<TObject, TString*> >::type
+    ObjectShortcuts<TObject>::operator[](TString* key) const {
+  return MemberProxy<TObject, TString*>(*impl(), key);
+}
+template <typename TObject>
+template <typename TString>
+inline typename enable_if<IsString<TString>::value,
+                          MemberProxy<TObject, TString> >::type
+    ObjectShortcuts<TObject>::operator[](const TString& key) const {
+  return MemberProxy<TObject, TString>(*impl(), key);
 }
 template <typename T>
 inline typename enable_if<is_same<ArrayConstRef, T>::value, T>::type variantAs(
@@ -3975,72 +4036,6 @@ inline VariantRef VariantRef::getOrAddMember(const TString &key) const {
   return VariantRef(_pool, variantGetOrCreate(_data, key, _pool));
 }
 }  // namespace ARDUINOJSON_NAMESPACE
-#if ARDUINOJSON_ENABLE_ARDUINO_STREAM
-#include <Stream.h>
-namespace ARDUINOJSON_NAMESPACE {
-struct ArduinoStreamReader {
-  Stream& _stream;
- public:
-  explicit ArduinoStreamReader(Stream& stream) : _stream(stream) {}
-  int read() {
-    char c;
-    return _stream.readBytes(&c, 1) ? c : -1;
-  }
-};
-inline ArduinoStreamReader makeReader(Stream& input) {
-  return ArduinoStreamReader(input);
-}
-}  // namespace ARDUINOJSON_NAMESPACE
-#endif
-namespace ARDUINOJSON_NAMESPACE {
-template <typename T>
-struct IsCharOrVoid {
-  static const bool value =
-      is_same<T, void>::value || is_same<T, char>::value ||
-      is_same<T, unsigned char>::value || is_same<T, signed char>::value;
-};
-template <typename T>
-struct IsCharOrVoid<const T> : IsCharOrVoid<T> {};
-class UnsafeCharPointerReader {
-  const char* _ptr;
- public:
-  explicit UnsafeCharPointerReader(const char* ptr)
-      : _ptr(ptr ? ptr : reinterpret_cast<const char*>("")) {}
-  int read() {
-    return static_cast<unsigned char>(*_ptr++);
-  }
-};
-class SafeCharPointerReader {
-  const char* _ptr;
-  const char* _end;
- public:
-  explicit SafeCharPointerReader(const char* ptr, size_t len)
-      : _ptr(ptr ? ptr : reinterpret_cast<const char*>("")), _end(_ptr + len) {}
-  int read() {
-    if (_ptr < _end)
-      return static_cast<unsigned char>(*_ptr++);
-    else
-      return -1;
-  }
-};
-template <typename TChar>
-inline typename enable_if<IsCharOrVoid<TChar>::value,
-                          UnsafeCharPointerReader>::type
-makeReader(TChar* input) {
-  return UnsafeCharPointerReader(reinterpret_cast<const char*>(input));
-}
-template <typename TChar>
-inline
-    typename enable_if<IsCharOrVoid<TChar>::value, SafeCharPointerReader>::type
-    makeReader(TChar* input, size_t n) {
-  return SafeCharPointerReader(reinterpret_cast<const char*>(input), n);
-}
-#if ARDUINOJSON_ENABLE_ARDUINO_STRING
-inline SafeCharPointerReader makeReader(const ::String& input) {
-  return SafeCharPointerReader(input.c_str(), input.length());
-}
-#endif
-}  // namespace ARDUINOJSON_NAMESPACE
 #if ARDUINOJSON_ENABLE_STD_STREAM
 #include <ostream>
 #endif
@@ -4129,41 +4124,27 @@ inline std::ostream& operator<<(std::ostream& s, DeserializationError::Code c) {
   return s;
 }
 #endif
-}  // namespace ARDUINOJSON_NAMESPACE
-#if ARDUINOJSON_ENABLE_PROGMEM
-namespace ARDUINOJSON_NAMESPACE {
-class UnsafeFlashStringReader {
-  const char* _ptr;
- public:
-  explicit UnsafeFlashStringReader(const __FlashStringHelper* ptr)
-      : _ptr(reinterpret_cast<const char*>(ptr)) {}
-  int read() {
-    return pgm_read_byte(_ptr++);
-  }
+struct NestingLimit {
+  NestingLimit() : value(ARDUINOJSON_DEFAULT_NESTING_LIMIT) {}
+  explicit NestingLimit(uint8_t n) : value(n) {}
+  uint8_t value;
 };
-class SafeFlashStringReader {
-  const char* _ptr;
-  const char* _end;
+template <typename TSource, typename Enable = void>
+struct Reader {
  public:
-  explicit SafeFlashStringReader(const __FlashStringHelper* ptr, size_t size)
-      : _ptr(reinterpret_cast<const char*>(ptr)), _end(_ptr + size) {}
+  Reader(TSource& source) : _source(&source) {}
   int read() {
-    if (_ptr < _end)
-      return pgm_read_byte(_ptr++);
-    else
-      return -1;
+    return _source->read();
   }
+  size_t readBytes(char* buffer, size_t length) {
+    return _source->readBytes(buffer, length);
+  }
+ private:
+  TSource* _source;
 };
-inline UnsafeFlashStringReader makeReader(const __FlashStringHelper* input) {
-  return UnsafeFlashStringReader(input);
-}
-inline SafeFlashStringReader makeReader(const __FlashStringHelper* input,
-                                        size_t size) {
-  return SafeFlashStringReader(input, size);
-}
-}  // namespace ARDUINOJSON_NAMESPACE
-#endif
-namespace ARDUINOJSON_NAMESPACE {
+template <typename TSource, typename Enable = void>
+struct BoundedReader {
+};
 template <typename TIterator>
 class IteratorReader {
   TIterator _ptr, _end;
@@ -4176,37 +4157,145 @@ class IteratorReader {
     else
       return -1;
   }
+  size_t readBytes(char* buffer, size_t length) {
+    size_t i = 0;
+    while (i < length && _ptr < _end) buffer[i++] = *_ptr++;
+    return i;
+  }
 };
-template <typename TInput>
-inline IteratorReader<typename TInput::const_iterator> makeReader(
-    const TInput& input) {
-  return IteratorReader<typename TInput::const_iterator>(input.begin(),
-                                                         input.end());
-}
-struct NestingLimit {
-  NestingLimit() : value(ARDUINOJSON_DEFAULT_NESTING_LIMIT) {}
-  explicit NestingLimit(uint8_t n) : value(n) {}
-  uint8_t value;
+template <typename T>
+struct void_ {
+  typedef void type;
+};
+template <typename TSource>
+struct Reader<TSource, typename void_<typename TSource::const_iterator>::type>
+    : IteratorReader<typename TSource::const_iterator> {
+  explicit Reader(const TSource& source)
+      : IteratorReader<typename TSource::const_iterator>(source.begin(),
+                                                         source.end()) {}
+};
+template <typename T>
+struct IsCharOrVoid {
+  static const bool value =
+      is_same<T, void>::value || is_same<T, char>::value ||
+      is_same<T, unsigned char>::value || is_same<T, signed char>::value;
+};
+template <typename T>
+struct IsCharOrVoid<const T> : IsCharOrVoid<T> {};
+template <typename TSource>
+struct Reader<TSource*,
+              typename enable_if<IsCharOrVoid<TSource>::value>::type> {
+  const char* _ptr;
+ public:
+  explicit Reader(const void* ptr)
+      : _ptr(ptr ? reinterpret_cast<const char*>(ptr) : "") {}
+  int read() {
+    return static_cast<unsigned char>(*_ptr++);
+  }
+  size_t readBytes(char* buffer, size_t length) {
+    for (size_t i = 0; i < length; i++) buffer[i] = *_ptr++;
+    return length;
+  }
+};
+template <typename TSource>
+struct BoundedReader<TSource*,
+                     typename enable_if<IsCharOrVoid<TSource>::value>::type>
+    : public IteratorReader<const char*> {
+ public:
+  explicit BoundedReader(const void* ptr, size_t len)
+      : IteratorReader<const char*>(reinterpret_cast<const char*>(ptr),
+                                    reinterpret_cast<const char*>(ptr) + len) {}
 };
 }  // namespace ARDUINOJSON_NAMESPACE
+#if ARDUINOJSON_ENABLE_ARDUINO_STREAM
+#include <Stream.h>
+namespace ARDUINOJSON_NAMESPACE {
+template <typename TSource>
+struct Reader<TSource,
+              typename enable_if<is_base_of<Stream, TSource>::value>::type> {
+ public:
+  explicit Reader(Stream& stream) : _stream(&stream) {}
+  int read() {
+    char c;
+    return _stream->readBytes(&c, 1) ? static_cast<unsigned char>(c) : -1;
+  }
+  size_t readBytes(char* buffer, size_t length) {
+    return _stream->readBytes(buffer, length);
+  }
+ private:
+  Stream* _stream;
+};
+}  // namespace ARDUINOJSON_NAMESPACE
+#endif
+#if ARDUINOJSON_ENABLE_ARDUINO_STRING
+namespace ARDUINOJSON_NAMESPACE {
+template <typename TSource>
+struct Reader<TSource,
+              typename enable_if<is_base_of< ::String, TSource>::value>::type>
+    : BoundedReader<const char*> {
+  explicit Reader(const ::String& s)
+      : BoundedReader<const char*>(s.c_str(), s.length()) {}
+};
+}  // namespace ARDUINOJSON_NAMESPACE
+#endif
+#if ARDUINOJSON_ENABLE_PROGMEM
+namespace ARDUINOJSON_NAMESPACE {
+template <>
+struct Reader<const __FlashStringHelper*, void> {
+  const char* _ptr;
+ public:
+  explicit Reader(const __FlashStringHelper* ptr)
+      : _ptr(reinterpret_cast<const char*>(ptr)) {}
+  int read() {
+    return pgm_read_byte(_ptr++);
+  }
+  size_t readBytes(char* buffer, size_t length) {
+    memcpy_P(buffer, _ptr, length);
+    _ptr += length;
+    return length;
+  }
+};
+template <>
+struct BoundedReader<const __FlashStringHelper*, void> {
+  const char* _ptr;
+  const char* _end;
+ public:
+  explicit BoundedReader(const __FlashStringHelper* ptr, size_t size)
+      : _ptr(reinterpret_cast<const char*>(ptr)), _end(_ptr + size) {}
+  int read() {
+    if (_ptr < _end)
+      return pgm_read_byte(_ptr++);
+    else
+      return -1;
+  }
+  size_t readBytes(char* buffer, size_t length) {
+    size_t available = static_cast<size_t>(_end - _ptr);
+    if (available < length) length = available;
+    memcpy_P(buffer, _ptr, length);
+    _ptr += length;
+    return length;
+  }
+};
+}  // namespace ARDUINOJSON_NAMESPACE
+#endif
 #if ARDUINOJSON_ENABLE_STD_STREAM
 #include <istream>
 namespace ARDUINOJSON_NAMESPACE {
-class StdStreamReader {
-  std::istream& _stream;
-  char _current;
+template <typename TSource>
+struct Reader<TSource, typename enable_if<
+                           is_base_of<std::istream, TSource>::value>::type> {
  public:
-  explicit StdStreamReader(std::istream& stream)
-      : _stream(stream), _current(0) {}
+  explicit Reader(std::istream& stream) : _stream(&stream) {}
   int read() {
-    return _stream.get();
+    return _stream->get();
+  }
+  size_t readBytes(char* buffer, size_t length) {
+    _stream->read(buffer, static_cast<std::streamsize>(length));
+    return static_cast<size_t>(_stream->gcount());
   }
  private:
-  StdStreamReader& operator=(const StdStreamReader&);  // Visual Studio C4512
+  std::istream* _stream;
 };
-inline StdStreamReader makeReader(std::istream& input) {
-  return StdStreamReader(input);
-}
 }  // namespace ARDUINOJSON_NAMESPACE
 #endif
 namespace ARDUINOJSON_NAMESPACE {
@@ -4310,36 +4399,30 @@ template <template <typename, typename> class TDeserializer, typename TString>
 typename enable_if<!is_array<TString>::value, DeserializationError>::type
 deserialize(JsonDocument &doc, const TString &input,
             NestingLimit nestingLimit) {
+  Reader<TString> reader(input);
   doc.clear();
   return makeDeserializer<TDeserializer>(
-             doc.memoryPool(), makeReader(input),
-             makeStringStorage(doc.memoryPool(), input), nestingLimit.value)
-      .parse(doc.data());
-}
-template <template <typename, typename> class TDeserializer, typename TChar>
-DeserializationError deserialize(JsonDocument &doc, TChar *input,
-                                 NestingLimit nestingLimit) {
-  doc.clear();
-  return makeDeserializer<TDeserializer>(
-             doc.memoryPool(), makeReader(input),
+             doc.memoryPool(), reader,
              makeStringStorage(doc.memoryPool(), input), nestingLimit.value)
       .parse(doc.data());
 }
 template <template <typename, typename> class TDeserializer, typename TChar>
 DeserializationError deserialize(JsonDocument &doc, TChar *input,
                                  size_t inputSize, NestingLimit nestingLimit) {
+  BoundedReader<TChar *> reader(input, inputSize);
   doc.clear();
   return makeDeserializer<TDeserializer>(
-             doc.memoryPool(), makeReader(input, inputSize),
+             doc.memoryPool(), reader,
              makeStringStorage(doc.memoryPool(), input), nestingLimit.value)
       .parse(doc.data());
 }
 template <template <typename, typename> class TDeserializer, typename TStream>
 DeserializationError deserialize(JsonDocument &doc, TStream &input,
                                  NestingLimit nestingLimit) {
+  Reader<TStream> reader(input);
   doc.clear();
   return makeDeserializer<TDeserializer>(
-             doc.memoryPool(), makeReader(input),
+             doc.memoryPool(), reader,
              makeStringStorage(doc.memoryPool(), input), nestingLimit.value)
       .parse(doc.data());
 }
@@ -4367,18 +4450,32 @@ class EscapeSequence {
 };
 namespace Utf8 {
 template <typename TStringBuilder>
-inline void encodeCodepoint(uint16_t codepoint, TStringBuilder &str) {
-  if (codepoint < 0x80) {
-    str.append(char(codepoint));
-    return;
-  }
-  if (codepoint >= 0x00000800) {
-    str.append(char(0xe0 /*0b11100000*/ | (codepoint >> 12)));
-    str.append(char(((codepoint >> 6) & 0x3f /*0b00111111*/) | 0x80));
+inline void encodeCodepoint(uint32_t codepoint32, TStringBuilder& str) {
+  char buf[5];
+  char* p = buf;
+  *(p++) = 0;
+  if (codepoint32 < 0x80) {
+    *(p++) = char((codepoint32));
   } else {
-    str.append(char(0xc0 /*0b11000000*/ | (codepoint >> 6)));
+    *(p++) = char((codepoint32 | 0x80) & 0xBF);
+    uint16_t codepoint16 = uint16_t(codepoint32 >> 6);
+    if (codepoint16 < 0x20) {  // 0x800
+      *(p++) = char(codepoint16 | 0xC0);
+    } else {
+      *(p++) = char((codepoint16 | 0x80) & 0xBF);
+      codepoint16 = uint16_t(codepoint16 >> 6);
+      if (codepoint16 < 0x10) {  // 0x10000
+        *(p++) = char(codepoint16 | 0xE0);
+      } else {
+        *(p++) = char((codepoint16 | 0x80) & 0xBF);
+        codepoint16 = uint16_t(codepoint16 >> 6);
+        *(p++) = char(codepoint16 | 0xF0);
+      }
+    }
   }
-  str.append(char((codepoint & 0x3f /*0b00111111*/) | 0x80));
+  while (*(--p)) {
+    str.append(*p);
+  }
 }
 }  // namespace Utf8
 template <typename TReader, typename TStringStorage>
@@ -4459,17 +4556,21 @@ class JsonDeserializer {
     if (err) return err;
     if (eat('}')) return DeserializationError::Ok;
     for (;;) {
-      VariantSlot *slot = object.addSlot(_pool);
-      if (!slot) return DeserializationError::NoMemory;
       const char *key;
       err = parseKey(key);
       if (err) return err;
-      slot->setOwnedKey(make_not_null(key));
+      VariantData *variant = object.get(adaptString(key));
+      if (!variant) {
+        VariantSlot *slot = object.addSlot(_pool);
+        if (!slot) return DeserializationError::NoMemory;
+        slot->setOwnedKey(make_not_null(key));
+        variant = slot->data();
+      }
       err = skipSpacesAndComments();
       if (err) return err;  // Colon
       if (!eat(':')) return DeserializationError::InvalidInput;
       _nestingLimit--;
-      err = parseVariant(*slot->data());
+      err = parseVariant(*variant);
       _nestingLimit++;
       if (err) return err;
       err = skipSpacesAndComments();
@@ -4496,6 +4597,9 @@ class JsonDeserializer {
   }
   DeserializationError parseQuotedString(const char *&result) {
     StringBuilder builder = _stringStorage.startString();
+#if ARDUINOJSON_DECODE_UNICODE
+    uint16_t surrogate1 = 0;
+#endif
     const char stopChar = current();
     move();
     for (;;) {
@@ -4508,10 +4612,20 @@ class JsonDeserializer {
         if (c == '\0') return DeserializationError::IncompleteInput;
         if (c == 'u') {
 #if ARDUINOJSON_DECODE_UNICODE
-          uint16_t codepoint;
           move();
-          DeserializationError err = parseCodepoint(codepoint);
+          uint32_t codepoint;
+          uint16_t codeunit;
+          DeserializationError err = parseHex4(codeunit);
           if (err) return err;
+          if (codeunit >= 0xDC00) {
+            codepoint =
+                uint32_t(0x10000 | ((surrogate1 << 10) | (codeunit & 0x3FF)));
+          } else if (codeunit < 0xd800) {
+            codepoint = codeunit;
+          } else {
+            surrogate1 = codeunit & 0x3FF;
+            continue;
+          }
           Utf8::encodeCodepoint(codepoint, builder);
           continue;
 #else
@@ -4584,14 +4698,14 @@ class JsonDeserializer {
     }
     return DeserializationError::InvalidInput;
   }
-  DeserializationError parseCodepoint(uint16_t &codepoint) {
-    codepoint = 0;
+  DeserializationError parseHex4(uint16_t &result) {
+    result = 0;
     for (uint8_t i = 0; i < 4; ++i) {
       char digit = current();
       if (!digit) return DeserializationError::IncompleteInput;
       uint8_t value = decodeHex(digit);
       if (value > 0x0F) return DeserializationError::InvalidInput;
-      codepoint = uint16_t((codepoint << 4) | value);
+      result = uint16_t((result << 4) | value);
       move();
     }
     return DeserializationError::Ok;
@@ -4622,6 +4736,7 @@ class JsonDeserializer {
         case '\n':
           move();
           continue;
+#if ARDUINOJSON_ENABLE_COMMENTS
         case '/':
           move();  // skip '/'
           switch (current()) {
@@ -4652,6 +4767,7 @@ class JsonDeserializer {
               return DeserializationError::InvalidInput;
           }
           break;
+#endif
         default:
           return DeserializationError::Ok;
       }
@@ -4749,7 +4865,7 @@ struct FloatParts {
 template <typename TWriter>
 class TextFormatter {
  public:
-  explicit TextFormatter(TWriter &writer) : _writer(writer), _length(0) {}
+  explicit TextFormatter(TWriter writer) : _writer(writer), _length(0) {}
   size_t bytesWritten() const {
     return _length;
   }
@@ -4849,7 +4965,7 @@ class TextFormatter {
     _length += _writer.write(static_cast<uint8_t>(c));
   }
  protected:
-  TWriter &_writer;
+  TWriter _writer;
   size_t _length;
  private:
   TextFormatter &operator=(const TextFormatter &);  // cannot be assigned
@@ -4870,6 +4986,19 @@ size_t measure(const TSource &source) {
   source.accept(serializer);
   return serializer.bytesWritten();
 }
+template <typename TDestination, typename Enable = void>
+class Writer {
+ public:
+  explicit Writer(TDestination& dest) : _dest(&dest) {}
+  size_t write(uint8_t c) {
+    return _dest->write(c);
+  }
+  size_t write(const uint8_t* s, size_t n) {
+    return _dest->write(s, n);
+  }
+ private:
+  TDestination* _dest;
+};
 class StaticStringWriter {
  public:
   StaticStringWriter(char *buf, size_t size) : end(buf + size - 1), p(buf) {
@@ -4895,70 +5024,143 @@ class StaticStringWriter {
   char *p;
 };
 }  // namespace ARDUINOJSON_NAMESPACE
-#if ARDUINOJSON_ENABLE_STD_STREAM
-#if ARDUINOJSON_ENABLE_STD_STREAM
+#if ARDUINOJSON_ENABLE_STD_STRING
 namespace ARDUINOJSON_NAMESPACE {
-class StreamWriter {
+template <class T>
+struct is_std_string : false_type {};
+template <class TCharTraits, class TAllocator>
+struct is_std_string<std::basic_string<char, TCharTraits, TAllocator> >
+    : true_type {};
+template <typename TDestination>
+class Writer<TDestination,
+             typename enable_if<is_std_string<TDestination>::value>::type> {
  public:
-  explicit StreamWriter(std::ostream& os) : _os(os) {}
+  Writer(TDestination &str) : _str(&str) {}
   size_t write(uint8_t c) {
-    _os << c;
+    _str->operator+=(static_cast<char>(c));
     return 1;
   }
-  size_t write(const uint8_t* s, size_t n) {
-    _os.write(reinterpret_cast<const char*>(s),
-              static_cast<std::streamsize>(n));
+  size_t write(const uint8_t *s, size_t n) {
+    _str->append(reinterpret_cast<const char *>(s), n);
     return n;
   }
  private:
-  StreamWriter& operator=(const StreamWriter&);
-  std::ostream& _os;
+  TDestination *_str;
 };
 }  // namespace ARDUINOJSON_NAMESPACE
-#endif  // ARDUINOJSON_ENABLE_STD_STREAM
+#endif
+#if ARDUINOJSON_ENABLE_ARDUINO_STRING
+namespace ARDUINOJSON_NAMESPACE {
+template <>
+class Writer< ::String, void> {
+  static const size_t bufferCapacity = ARDUINOJSON_STRING_BUFFER_SIZE;
+ public:
+  explicit Writer(::String &str) : _destination(&str) {
+    _size = 0;
+  }
+  ~Writer() {
+    flush();
+  }
+  size_t write(uint8_t c) {
+    ARDUINOJSON_ASSERT(_size < bufferCapacity);
+    _buffer[_size++] = static_cast<char>(c);
+    if (_size + 1 >= bufferCapacity) flush();
+    return 1;
+  }
+  size_t write(const uint8_t *s, size_t n) {
+    for (size_t i = 0; i < n; i++) {
+      write(s[i]);
+    }
+    return n;
+  }
+ private:
+  void flush() {
+    ARDUINOJSON_ASSERT(_size < bufferCapacity);
+    _buffer[_size] = 0;
+    *_destination += _buffer;
+    _size = 0;
+  }
+  ::String *_destination;
+  char _buffer[bufferCapacity];
+  size_t _size;
+};
+}  // namespace ARDUINOJSON_NAMESPACE
+#endif
+#if ARDUINOJSON_ENABLE_STD_STREAM
+namespace ARDUINOJSON_NAMESPACE {
+template <typename TDestination>
+class Writer<
+    TDestination,
+    typename enable_if<is_base_of<std::ostream, TDestination>::value>::type> {
+ public:
+  explicit Writer(std::ostream& os) : _os(&os) {}
+  size_t write(uint8_t c) {
+    _os->put(static_cast<char>(c));
+    return 1;
+  }
+  size_t write(const uint8_t* s, size_t n) {
+    _os->write(reinterpret_cast<const char*>(s),
+               static_cast<std::streamsize>(n));
+    return n;
+  }
+ private:
+  std::ostream* _os;
+};
+}  // namespace ARDUINOJSON_NAMESPACE
+#endif
+#if ARDUINOJSON_ENABLE_ARDUINO_PRINT
+namespace ARDUINOJSON_NAMESPACE {
+template <typename TDestination>
+class Writer<
+    TDestination,
+    typename enable_if<is_base_of< ::Print, TDestination>::value>::type> {
+ public:
+  explicit Writer(::Print& print) : _print(&print) {}
+  size_t write(uint8_t c) {
+    return _print->write(c);
+  }
+  size_t write(const uint8_t* s, size_t n) {
+    return _print->write(s, n);
+  }
+ private:
+  ::Print* _print;
+};
+}  // namespace ARDUINOJSON_NAMESPACE
 #endif
 namespace ARDUINOJSON_NAMESPACE {
 template <template <typename> class TSerializer, typename TSource,
-          typename TDestination>
-size_t doSerialize(const TSource &source, TDestination &destination) {
-  TSerializer<TDestination> serializer(destination);
+          typename TWriter>
+size_t doSerialize(const TSource &source, TWriter writer) {
+  TSerializer<TWriter> serializer(writer);
   source.accept(serializer);
   return serializer.bytesWritten();
 }
-#if ARDUINOJSON_ENABLE_STD_STREAM
-template <template <typename> class TSerializer, typename TSource>
-size_t serialize(const TSource &source, std::ostream &destination) {
-  StreamWriter writer(destination);
+template <template <typename> class TSerializer, typename TSource,
+          typename TDestination>
+size_t serialize(const TSource &source, TDestination &destination) {
+  Writer<TDestination> writer(destination);
   return doSerialize<TSerializer>(source, writer);
 }
-#endif
-#if ARDUINOJSON_ENABLE_ARDUINO_PRINT
 template <template <typename> class TSerializer, typename TSource>
-size_t serialize(const TSource &source, Print &destination) {
-  return doSerialize<TSerializer>(source, destination);
-}
-#endif
-template <template <typename> class TSerializer, typename TSource>
-size_t serialize(const TSource &source, char *buffer, size_t bufferSize) {
-  StaticStringWriter writer(buffer, bufferSize);
-  return doSerialize<TSerializer>(source, writer);
-}
-template <template <typename> class TSerializer, typename TSource, size_t N>
-size_t serialize(const TSource &source, char (&buffer)[N]) {
-  StaticStringWriter writer(buffer, N);
+size_t serialize(const TSource &source, void *buffer, size_t bufferSize) {
+  StaticStringWriter writer(reinterpret_cast<char *>(buffer), bufferSize);
   return doSerialize<TSerializer>(source, writer);
 }
 template <template <typename> class TSerializer, typename TSource,
-          typename TString>
-typename enable_if<IsWriteableString<TString>::value, size_t>::type serialize(
-    const TSource &source, TString &str) {
-  DynamicStringWriter<TString> writer(str);
+          typename TChar, size_t N>
+#if defined _MSC_VER && _MSC_VER < 1900
+typename enable_if<sizeof(remove_reference<TChar>::type) == 1, size_t>::type
+#else
+typename enable_if<sizeof(TChar) == 1, size_t>::type
+#endif
+serialize(const TSource &source, TChar (&buffer)[N]) {
+  StaticStringWriter writer(reinterpret_cast<char *>(buffer), N);
   return doSerialize<TSerializer>(source, writer);
 }
 template <typename TWriter>
 class JsonSerializer {
  public:
-  JsonSerializer(TWriter &writer) : _formatter(writer) {}
+  JsonSerializer(TWriter writer) : _formatter(writer) {}
   FORCE_INLINE void visitArray(const CollectionData &array) {
     write('[');
     VariantSlot *slot = array.head();
@@ -5022,7 +5224,7 @@ size_t serializeJson(const TSource &source, TDestination &destination) {
   return serialize<JsonSerializer>(source, destination);
 }
 template <typename TSource>
-size_t serializeJson(const TSource &source, char *buffer, size_t bufferSize) {
+size_t serializeJson(const TSource &source, void *buffer, size_t bufferSize) {
   return serialize<JsonSerializer>(source, buffer, bufferSize);
 }
 template <typename TSource>
@@ -5085,7 +5287,7 @@ size_t serializeJsonPretty(const TSource &source, TDestination &destination) {
   return serialize<PrettyJsonSerializer>(source, destination);
 }
 template <typename TSource>
-size_t serializeJsonPretty(const TSource &source, char *buffer,
+size_t serializeJsonPretty(const TSource &source, void *buffer,
                            size_t bufferSize) {
   return serialize<PrettyJsonSerializer>(source, buffer, bufferSize);
 }
@@ -5224,10 +5426,7 @@ class MsgPackDeserializer {
     return true;
   }
   bool readBytes(uint8_t *p, size_t n) {
-    for (size_t i = 0; i < n; i++) {
-      if (!readByte(p[i])) return false;
-    }
-    return true;
+    return _reader.readBytes(reinterpret_cast<char *>(p), n) == n;
   }
   template <typename T>
   bool readBytes(T &value) {
@@ -5399,7 +5598,7 @@ DeserializationError deserializeMsgPack(
 template <typename TWriter>
 class MsgPackSerializer {
  public:
-  MsgPackSerializer(TWriter& writer) : _writer(&writer), _bytesWritten(0) {}
+  MsgPackSerializer(TWriter writer) : _writer(writer), _bytesWritten(0) {}
   template <typename T>
   typename enable_if<sizeof(T) == 4>::type visitFloat(T value32) {
     writeByte(0xCA);
@@ -5520,25 +5719,25 @@ class MsgPackSerializer {
   }
  private:
   void writeByte(uint8_t c) {
-    _bytesWritten += _writer->write(c);
+    _bytesWritten += _writer.write(c);
   }
   void writeBytes(const uint8_t* p, size_t n) {
-    _bytesWritten += _writer->write(p, n);
+    _bytesWritten += _writer.write(p, n);
   }
   template <typename T>
   void writeInteger(T value) {
     fixEndianess(value);
     writeBytes(reinterpret_cast<uint8_t*>(&value), sizeof(value));
   }
-  TWriter* _writer;
+  TWriter _writer;
   size_t _bytesWritten;
 };
 template <typename TSource, typename TDestination>
 inline size_t serializeMsgPack(const TSource& source, TDestination& output) {
   return serialize<MsgPackSerializer>(source, output);
 }
-template <typename TSource, typename TDestination>
-inline size_t serializeMsgPack(const TSource& source, TDestination* output,
+template <typename TSource>
+inline size_t serializeMsgPack(const TSource& source, void* output,
                                size_t size) {
   return serialize<MsgPackSerializer>(source, output, size);
 }
