@@ -1,223 +1,9 @@
 
 from math import sqrt
-import heapq
 
-class Node:
-
-    INFINITY = 1000000000
-
-    def __init__(self, row, col, cost = 0):
-        self.row = row
-        self.col = col
-
-        # Default node value
-        self.G = self.INFINITY
-        self.rhs = self.INFINITY
-        self.par = None
-        self.key = (None, None)
-
-        # Cost (for obstacles and such)
-        self.cost = cost
-
-    def set_g(self, G):
-        self.G = G
-
-    def set_rhs(self, rhs):
-        self.rhs = rhs
-
-    def set_par(self, par):
-        self.par = par
-
-    def set_key(self, key):
-        self.key = key
-
-    def set_cost(self, cost):
-        self.cost = cost
-
-    def __cmp__(self, other):
-        """ Sort keys with lowest priority to the top of the list"""
-        # Sort by the first key
-        comp_val = cmp(self.key[0], other.key[0])
-        if comp_val != 0:
-            return comp_val
-
-        # If there was a tie, use the second key as a tiebreaker
-        return cmp(self.key[1], other.key[1])
-
-    def __lt__(self, other):
-        comp_val = (self.key[0] < other.key[0])
-
-        if comp_val is True:
-            return True
-        elif self.key[0] == other.key[0]:
-            return self.key[1] < other.key[1]
-
-        return False
-
-    def __gt__(self, other):
-        comp_val = (self.key[0] > other.key[0])
-
-        if comp_val is True:
-            return True
-        elif self.key[0] == other.key[0]:
-            return self.key[1] > other.key[1]
-
-        return False
-
-    def __eq__(self, other):
-        return (self.row == other.row) and (self.col == other.col)
-
-
-
-class OpenList:
-
-    def __init__(self):
-        """ Initialize the open list """
-        # Set up an empty min heap using list and heapq
-        self.min_heap = []
-        heapq.heapify(self.min_heap)
-
-    def update(self, node):
-        """ Update a node entry in the open list """
-        if node in self.min_heap:
-            self.delete(node)
-            self.insert(node)
-
-    def insert(self, node):
-        """ Add a node to the queue """
-        # Push the node to the heap
-        heapq.heappush(self.min_heap, node)
-
-    def delete(self, node):
-        """ Delete a node from the open list """
-        if node in self.min_heap:
-            self.min_heap.remove(node)
-            heapq.heapify(self.min_heap)
-
-    def top_key(self):
-        """ Get the top value in the heap """
-        if len(self.min_heap) == 0:
-            return (Node.INFINITY, Node.INFINITY)
-        # The top key will be the lowest priority
-        return min(self.min_heap).key
-
-    def top(self):
-        """ Get the top value from the list """
-        if len(self.min_heap) == 0:
-            return None
-        return self.min_heap[0]
-
-    def contains(self, val):
-        return val in self.min_heap
-
-
-
-class SearchSpace:
-
-    def __init__(self, width, height):
-        # Graph properties
-        self.W = width
-        self.H = height
-
-        # Create a graph for searching
-        self.grid = []
-
-        # Populate the grid
-        for i in range(self.W):
-            row = []
-            for j in range(self.H):
-                row.append(Node(i,j))
-            self.grid.append(row)
-
-    def get_node(self, pos):
-        """ Gets a node at a given (row, col) position from the grid """
-        return self.grid[pos[0]][pos[1]]
-
-    def get_successors(self, node):
-        succ = []
-        for i in range(node.row-1, node.row+2):
-            for j in range(node.col-1, node.col+2):
-                if i >= 0 and i < self.H and j >= 0 and j < self.W and (i != node.row or j != node.col):
-                    succ.append(self.grid[i][j])
-
-        return succ
-
-    def print_search_space_rhs(self):
-        for i in range(self.H):
-            for j in range(self.W):
-                rhs = self.grid[i][j].rhs
-                if rhs < Node.INFINITY:
-                    print("(" + str(i) + "," + str(j) + "): " + str(rhs))
-        print "----"
-
-    def get_search_space_rhs_map(self):
-        rhs_map_data = [0] * self.W * self.H
-        for i in range(self.H):
-            for j in range(self.W):
-                rhs = self.grid[i][j].rhs
-                if rhs < Node.INFINITY:
-                    rhs_map_data[(i * self.W) + j] = int(rhs)
-        return rhs_map_data
-
-    def load_search_space_from_map(self, map_data):
-        for i in range(self.H):
-            for j in range(self.W):
-                if map_data[(self.H * i) + j] != 0:
-                    self.grid[i][j].set_cost(Node.INFINITY)
-
-    def get_deleteable_nodes(self, start_node):
-        # Define the lists for this search
-        parent_set = set([start_node])
-        frontier = [start_node]
-        reset_list = []
-
-        # Expand the frontier using BFS until there is nothing left to explore
-        while len(frontier) > 0:
-            # Take the next node off the frontier list
-            node = frontier.pop(0)
-
-            # Look through the successors of this node
-            for succ in self.get_successors(node):
-                # If this successor has a parent in the parent set, we cannot delete it
-                # Since it is part of the subtree, we should add it to the parent set as well
-                if succ.par in parent_set:
-                    parent_set.add(succ)
-                # Otherwise, this node is not in the subtree rooted at the start node, so add
-                # it to the list of nodes to reset
-                else:
-                    reset_list.append(succ)
-
-                # As long as the node has a non infinite RHS, we should add it to the frontier
-                if succ.rhs < Node.INFINITY:
-                    frontier.append(succ)
-
-        # Return the nodes that can be reset
-        return reset_list
-
-
-    def update_map(self, new_map):
-        """ updates the map for the search space """
-        # Create a list for nodes with changed cost
-        changed_nodes = []
-
-        # Go through and update each cell
-        for i in range(self.H):
-            for j in range(self.W):
-                # Get the old cost
-                old_cost = self.grid[i][j].cost
-
-                # Update the cost of the node
-                if new_map[(self.H * i) + j] != 0:
-                    self.grid[i][j].set_cost(Node.INFINITY)
-                else:
-                    self.grid[i][j].set_cost(0)
-
-                # Detect if the node changed costs
-                if self.grid[i][j].cost != old_cost:
-                    changed_nodes.append(self.grid[i][j])
-
-        # Return the nodes that have changed so the edge costs can be updated
-        return changed_nodes
+from node import Node
+from search_space import SearchSpace
+from open_list import OpenList
 
 
 # Algorithm: http://idm-lab.org/bib/abstracts/papers/aamas10a.pdf
@@ -269,7 +55,9 @@ class mt_dstar_lite:
 
     def calculate_key(self, node):
         """ Calculates a node key based on its G and RHS values, as well as the distance to the goal """
-        return (min(node.G, node.rhs) + self.heuristic(node, self.goal_node) + self.km, min(node.G, node.rhs))
+        key_1 = min(min(node.G, node.rhs) + self.heuristic(node, self.goal_node) + self.km, Node.INFINITY)
+        key_2 = min(min(node.G, node.rhs), Node.INFINITY)
+        return (key_1, key_2)
 
 
     def heuristic(self, node1, node2):
@@ -364,7 +152,7 @@ class mt_dstar_lite:
         self.start_node.set_par(None)
 
         # Go through the nodes in the search tree that aren't on the path from the current start node to the goal node
-        for s_node is self.search_space.get_deleteable_nodes(self.start_node):
+        for s_node in self.search_space.get_deleteable_nodes(self.start_node):
             # Reset the node's data
             s_node.set_par(None)
             s_node.set_rhs(Node.INFINITY)
@@ -438,7 +226,7 @@ class mt_dstar_lite:
     # while loop. Therefore, plan() should only be called by an external class the first time we want to plan,
     # and all subsequent external planning requests should be to the following replan() function
 
-    def replan(self, new_map, robot_pos, goal_pos, offset):
+    def replan(self, robot_pos, goal_pos, new_map):
         # Get the node the robot is on (row, col is the pos argument)
         self.start_node = self.search_space.get_node(robot_pos)
 
@@ -469,10 +257,10 @@ class mt_dstar_lite:
                     # Only update successors that map to the current node (and that aren't the start node)
                     if succ != self.start_node and succ.par is c_node:
                         # Set the RHS to be the minimum one-step lookahead
-                        succ_rhs = min([node.G + self.cost(node, s_node) for node in self.search_space.get_successors(s_node)])
+                        succ_rhs = min([node.G + self.cost(node, succ) for node in self.search_space.get_successors(succ)])
                         succ.set_rhs(succ_rhs)
 
-                        if s_node.rhs >= Node.INFINITY:
+                        if succ.rhs >= Node.INFINITY:
                             succ.set_rhs(Node.INFINITY)
                             succ.set_par(None)
                         else:

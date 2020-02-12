@@ -7,5 +7,7 @@
     <!-- Moving Target D*Lite node -->
     <node pkg="igvc_nav" type="mt_dstar_node.py" name="mt_dstar_node" output="screen" />
 
+    <!-- EKF -->
+    <node pkg="igvc_ekf" type="igvc_ekf_node" name="igvc_ekf_node" output="screen" />
 
 </launch>
