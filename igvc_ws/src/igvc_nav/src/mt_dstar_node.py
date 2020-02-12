@@ -22,7 +22,7 @@ prev_state = (0, 0)  # x, y
 GRID_SIZE = 0.01     # Map block size in meters #TODO: the grid size should be 0.1 I think
 
 def c_space_callback(c_space):
-    global planner, map_init, path_failed
+    global planner, map_init, path_failed, prev_state
 
     # Get the grid data
     grid_data = c_space.data
@@ -85,7 +85,7 @@ def c_space_callback(c_space):
         prev_state = (int(xk.state.x_k[3] / GRID_SIZE), int(xk.state.x_k[4] / GRID_SIZE))
 
         # Request the planner replan the path
-        path = planner.replan(robot_pos, best_pos, cost_map, map_shift)
+        path = planner.replan(robot_pos, best_pos, cost_map) #, map_shift) # TODO: add in shifting
 
 
     print "path:"
