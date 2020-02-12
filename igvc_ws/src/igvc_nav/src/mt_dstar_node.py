@@ -14,15 +14,15 @@ path_pub = rospy.Publisher("/igvc_nav/path_map", OccupancyGrid, queue_size=10)
 
 # Moving Target D* Lite
 map_init = False
+path_failed = False
 planner = mt_dstar_lite()
 
 # Localization tracking
-prev_coord = (0, 0)
-GRID_SIZE = 0.01     # Map block size in meters
-#TODO: the grid size should be 0.1 I think
+prev_state = (0, 0)  # x, y
+GRID_SIZE = 0.01     # Map block size in meters #TODO: the grid size should be 0.1 I think
 
 def c_space_callback(c_space):
-    global planner, map_init
+    global planner, map_init, path_failed
 
     # Get the grid data
     grid_data = c_space.data
@@ -61,8 +61,9 @@ def c_space_callback(c_space):
     path = None
 
     # MOVING TARGET D*LITE
-    # If this is the first time receiving a map, initialize the path planner and plan the first path
-    if map_init == False:
+    # If this is the first time receiving a map, or if the path failed to be made last time (for robustness),
+    # initialize the path planner and plan the first path
+    if map_init == False or path_failed == True:
         planner.initialize(200, 200, (100, 100), best_pos, cost_map)
         path = planner.plan()
         map_init = True
@@ -71,10 +72,20 @@ def c_space_callback(c_space):
         # Get the EKF's robot state estimate
         robot_state = rospy.ServiceProxy('/igvc_ekf/get_robot_state', EKFService)
         xk = robot_state()
+
+        # Update the robot's position on the map
         robot_pos = (100 - int(xk.state.x_k[3] / GRID_SIZE), 100 + int(xk.state.x_k[4] / GRID_SIZE))
-        print(robot_pos)
+
+        # Transform the map to account for heading changes
+        hdg = xk.state.x_k[5]
+        #TODO: rotate map to 0 degree heading
+
+        # Calculate the map shift based on the change in EKF state
+        map_shift = (int(xk.state.x_k[3] / GRID_SIZE) - prev_state[0], int(xk.state.x_k[4] / GRID_SIZE) - prev_state[1])
+        prev_state = (int(xk.state.x_k[3] / GRID_SIZE), int(xk.state.x_k[4] / GRID_SIZE))
+
         # Request the planner replan the path
-        path = planner.replan(robot_pos, best_pos, cost_map)
+        path = planner.replan(robot_pos, best_pos, cost_map, map_shift)
 
 
     print "path:"
@@ -90,14 +101,18 @@ def c_space_callback(c_space):
         path_msg = copy.deepcopy(c_space)
         path_msg.data = path_space
 
+        # TODO: only publish the path map if this is the simulator
         path_pub.publish(path_msg)
     else:
-        path_msg = copy.deepcopy(c_space)
-        data = planner.get_search_space_map()
-        data[(best_pos[0]*200) + best_pos[1]] = 100
-        print(str(c_space.info.width) + " x " + str(c_space.info.height))
-        path_msg.data = data
-        path_pub.publish(path_msg)
+        # Set the path failed flag so we can fully replan
+        path_failed = True
+
+        # path_msg = copy.deepcopy(c_space)
+        # data = planner.get_search_space_map()
+        # data[(best_pos[0]*200) + best_pos[1]] = 100
+        # print(str(c_space.info.width) + " x " + str(c_space.info.height))
+        # path_msg.data = data
+        # path_pub.publish(path_msg)
 
 
 def mt_dstar_node():

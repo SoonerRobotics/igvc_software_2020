@@ -85,6 +85,8 @@ class SearchSpace:
                 if succ.rhs < Node.INFINITY and (succ not in explored_set) and (succ not in frontier):
                     frontier.append(succ)
 
+        print(len(reset_set), len(explored_set))
+
         # Return the nodes that can be reset as a list
         return list(reset_set)
 
