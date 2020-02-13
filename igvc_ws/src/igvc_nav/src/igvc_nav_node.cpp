@@ -1,3 +1,10 @@
+/*
+PLS READ
+
+This file is no longer being built. Please re-enable in CMakeLists.txt when updated.
+*/
+
+
 #include <ros/ros.h>
 #include "igvc_msgs/lane_error.h"
 #include "igvc_msgs/vel.h"

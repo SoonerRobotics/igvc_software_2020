@@ -53,4 +53,5 @@ CATKIN_IGNORE
 
 # SCR custom
 .vscode/
+.idea/
 /igvc_ws/src/deps/**

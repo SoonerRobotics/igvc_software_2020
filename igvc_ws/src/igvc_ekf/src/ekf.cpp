@@ -5,28 +5,52 @@ EKF::EKF()
 {
     // set the covariance matrix to 0.8 identically
     this->P_k.setIdentity(11, 11);
-    this->P_k *= 0.8;
+    this->P_k *= 0.9;
 
     // Define the process noise
     this->Q_k.setIdentity(11, 11);
-    this->Q_k *= 0.1;
+    this->Q_k *= 0.4;
 
     // Define the measurement noise
-    this->R_k.setIdentity(11, 11);
-    this->R_k *= 0.2;
+    this->R_k.setIdentity(9, 9) * 0.7;
+    this->R_k(0, 0) = 3.395864;
+    this->R_k(1, 1) = 4.571665;
 
     // Define the measurement model
-    this->H_k.setZero(6, 11);
-    this->H_k(0,0) = 1;
-    this->H_k(1,1) = 1;
+    this->H_k.setZero(9, 11);
+
+    // Lat
+    this->H_k(0, 0) = 1;
+
+    // Lon
+    this->H_k(1, 1) = 1;
+
+    // Velocity
     this->H_k(2, 8) = 0.5;
     this->H_k(2, 9) = 0.5;
+
+    // accel
     this->H_k(3, 10) = 1;
+
+    // global heading
     this->H_k(4, 2) = 1;
+
+    // local heading
     this->H_k(5, 5) = 1;
 
+    // angular velocity
+    this->H_k(6, 7) = 1;
+    //this->H_k(6, 8) = -(WHEEL_RADIUS / WHEELBASE_LEN);
+    //this->H_k(6, 9) = WHEEL_RADIUS / WHEELBASE_LEN;
+
+    // left velocity
+    this->H_k(7, 8) = 1;
+
+    // right velocity
+    this->H_k(8, 9) = 1;
+
     // Initialize the kalman gain
-    this->K_k.setZero(11, 6);
+    this->K_k.setZero(11, 9);
 
     // Setup identity matrix
     this->I.setIdentity(11, 11);
@@ -65,6 +89,10 @@ Eigen::VectorXd EKF::run_filter(Eigen::VectorXd sensors, Eigen::VectorXd u_k)
 }
 
 
+double EKF::get_convergence()
+{
+    return this->convergence;
+}
 
 
 
@@ -100,6 +128,10 @@ void EKF::calculate_dynamics(Eigen::VectorXd u_k, double dt)
     // Velocities
     x_k(6) = velocity;
     x_k(7) = psi_dot;
+
+    // Wheel velocities
+    x_k(8) = u_k(0);
+    x_k(9) = u_k(1);
 }
 
 
@@ -191,14 +223,17 @@ void EKF::predict(Eigen::VectorXd u_k, double dt)
 Eigen::VectorXd EKF::get_measurements()
 {
     Eigen::VectorXd measurements;
-    measurements.resize(6);
+    measurements.resize(9);
 
     measurements(0) = this->x_k(0);
     measurements(1) = this->x_k(1);
-    measurements(2) = 0.5 * (this->x_k(8) + this->x_k(9));
+    measurements(2) = this->x_k(6);//0.5 * (this->x_k(8) + this->x_k(9));
     measurements(3) = this->x_k(10);
     measurements(4) = this->x_k(2);
     measurements(5) = this->x_k(5);
+    measurements(6) = this->x_k(7);
+    measurements(7) = this->x_k(8);
+    measurements(8) = this->x_k(9);
 
     return measurements;
 }
@@ -208,10 +243,13 @@ Eigen::VectorXd EKF::get_measurements()
 void EKF::update(Eigen::VectorXd z_k)
 {
     // Calculate the innovation (the difference between predicted measurements and the actual measurements)
-    Eigen::VectorXd yk = z_k - get_measurements();
+    this->yk = z_k - get_measurements();
 
     // Find the covariance of the innovation
-    Eigen::MatrixXd Sk = (this->H_k * this->P_k * this->H_k.transpose()) + this->R_k;
+    this->Sk = (this->H_k * this->P_k * this->H_k.transpose()) + this->R_k;
+
+    // Convergence calculation
+    this->convergence = this->yk.transpose() * this->Sk.inverse() * this->yk;
 
     // Compute Kalman gain
     this->K_k = this->P_k * H_k.transpose() * Sk.inverse();

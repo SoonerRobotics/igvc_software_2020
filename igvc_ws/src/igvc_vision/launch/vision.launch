@@ -1,6 +1,6 @@
 <launch>
-  <node name="obstacle_avoidance_node" pkg="roma_vision" type="obstacle_avoidance_node"/>
-  <node name="ydlidar_node"  pkg="ydlidar"  type="ydlidar_node" output="screen">
+  <node name="lidar_node" pkg="igvc_vision" type="lidar_node" output="screen"/>
+  <node name="ydlidar_node"  pkg="ydlidar_ros"  type="ydlidar_node" output="screen">
     <param name="port"         type="string" value="/dev/ttyUSB0"/>
     <param name="baudrate"     type="int"    value="128000"/>
     <param name="frame_id"     type="string" value="laser_frame"/>
