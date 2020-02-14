@@ -5,12 +5,12 @@
 #include "std_msgs/String.h"
 #include "sensor_msgs/LaserScan.h"
 
-
 //CONSTANTS
 #define MAX_DISTANCE 10 // Max distance of 10 meters
 #define DIMENSIONS 200  // The grid dimensions
 #define RESOLUTION 0.1  // Resolution of map (meters)
 #define LIDAR_POS 100   // Row and Col indices for LiDAR
+
 
 ros::Publisher map_pub;
 
@@ -19,6 +19,7 @@ ros::Publisher map_pub;
  *
  * @param msg
  */
+
 void onLidarCallback(const sensor_msgs::LaserScan::ConstPtr &msg)
 {
 	//Instantiate message to publish to
