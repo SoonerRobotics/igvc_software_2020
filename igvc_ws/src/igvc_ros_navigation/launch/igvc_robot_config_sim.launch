@@ -1,0 +1,13 @@
+<launch>
+
+    <!-- Simulator Parameters -->
+    <param name="port" value="9090"/>
+
+    <!-- Set up the bridge to the simulator -->
+    <include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch" />
+
+    <!-- Interact with the ros navigation stack through tf publisher and the cmd_vel driver -->
+    <node pkg="igvc_transforms" type="igvc_tf_publisher_node" name="igvc_tf_publisher_node" output="screen" />
+    <node pkg="igvc_ros_navigation" type="igvc_motor_driver.py" name="igvc_motor_driver_node" output="screen" />
+
+</launch>
