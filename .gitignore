@@ -55,3 +55,4 @@ CATKIN_IGNORE
 .vscode/
 .idea/
 /igvc_ws/src/deps/**
+/igvc_ws/src/igvc_ekf/data/*.csv

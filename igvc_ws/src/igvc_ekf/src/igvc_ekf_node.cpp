@@ -13,6 +13,7 @@
 #include "igvc_msgs/gps.h"
 #include "igvc_msgs/imuodom.h"
 #include "igvc_msgs/velocity.h"
+#include "igvc_msgs/EKFService.h"
 
 // Init the EKF
 EKF ekf;
@@ -71,7 +72,17 @@ void updateConvergence(const ros::TimerEvent& timer_event)
     }
 }
 
+bool get_robot_state(igvc_msgs::EKFService::Request  &request,
+                     igvc_msgs::EKFService::Response &response)
+{
+    // Construct the state vector to publish to other modules
+    for (int i = 0; i < 11; ++i)
+    {
+        response.state.x_k[i] = x(i);
+    }
 
+    return true;
+}
 
 /******
  * Helper functions
@@ -196,6 +207,9 @@ int main(int argc, char** argv)
     // Publishers
     output_pub = ekf_node.advertise<igvc_msgs::ekf_state>(ekf_node.resolveName("/igvc_ekf/filter_output"), 10);
     convergence_pub = ekf_node.advertise<igvc_msgs::ekf_convergence>(ekf_node.resolveName("/igvc_ekf/ekf_convergence"), 10);
+
+    // Service
+    ros::ServiceServer get_state_srv = ekf_node.advertiseService("/igvc_ekf/get_robot_state", &get_robot_state);
 
     // Timers
     ros::Timer ekf_update = ekf_node.createTimer(ros::Duration(0.02), &updateEKF, false);
