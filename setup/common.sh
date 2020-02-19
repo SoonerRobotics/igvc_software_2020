@@ -11,7 +11,6 @@ sleep 2
 service udev restart
 
 ## vcs
-
 # Install vcstool
 sudo pip install vcstool
 
@@ -24,3 +23,10 @@ sudo apt install libspatialindex-dev
 
 # Install python dependencies
 pip install -r requirements.txt
+
+# Install map_server dependencies
+sudo apt-get install libsdl-image1.2-dev and
+sudo apt-get install libsdl-dev
+
+# costmap_2d dependencies
+sudo apt-get install ros-melodic-tf2-sensor-msgs
