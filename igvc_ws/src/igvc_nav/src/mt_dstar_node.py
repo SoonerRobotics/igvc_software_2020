@@ -19,7 +19,7 @@ planner = mt_dstar_lite()
 
 # Localization tracking
 prev_state = (0, 0)  # x, y
-GRID_SIZE = 0.01     # Map block size in meters #TODO: the grid size should be 0.1 I think
+GRID_SIZE = 0.1      # Map block size in meters #TODO: the grid size should be 0.1 I think
 
 def c_space_callback(c_space):
     global planner, map_init, path_failed, prev_state

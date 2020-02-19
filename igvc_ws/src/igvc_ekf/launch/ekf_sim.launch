@@ -1,4 +1,8 @@
 <launch>
+    <!-- Simulator Parameters -->
+    <param name="port" value="9090"/>
+    <!-- Set up the bridge to the simulator -->
+    <include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch" />
 
     <!-- EKF node -->
     <node pkg="igvc_ekf" type="igvc_ekf_node" name="igvc_ekf_node" output="screen" />
