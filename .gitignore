@@ -56,3 +56,4 @@ CATKIN_IGNORE
 .idea/
 /igvc_ws/src/deps/**
 /igvc_ws/src/igvc_ekf/data/*.csv
+/igvc_ws/src/igvc_nav/src/output/visualizations/*.html
