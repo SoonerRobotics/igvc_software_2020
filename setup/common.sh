@@ -1,5 +1,8 @@
 #!/bin/bash
 
+## update sources
+sudo apt update
+
 ## udev
 
 # copy igvc.rules to rule.d
@@ -11,6 +14,9 @@ sleep 2
 service udev restart
 
 ## vcs
+# Install pip
+sudo apt install python-pip -y
+
 # Install vcstool
 sudo pip install vcstool
 
@@ -19,14 +25,17 @@ vcs import < igvc.deps
 
 
 # Install library dependencies
-sudo apt install libspatialindex-dev
+sudo apt install libspatialindex-dev -y
 
 # Install python dependencies
 pip install -r requirements.txt
 
 # Install map_server dependencies
-sudo apt-get install libsdl-image1.2-dev and
-sudo apt-get install libsdl-dev
+sudo apt-get install libsdl-image1.2-dev and -y
+sudo apt-get install libsdl-dev -y
 
 # costmap_2d dependencies
-sudo apt-get install ros-melodic-tf2-sensor-msgs
+sudo apt-get install ros-melodic-tf2-sensor-msgs -y
+
+# tf2_sensor_msgs dependencies
+sudo apt-get install ros-melodic-tf2-sensor-msgs -y
