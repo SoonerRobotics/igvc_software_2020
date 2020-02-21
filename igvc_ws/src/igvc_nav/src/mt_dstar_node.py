@@ -2,7 +2,8 @@
 
 import rospy
 from std_msgs.msg import String
-from nav_msgs.msg import OccupancyGrid
+from geometry_msgs.msg import PoseStamped, Pose, Point
+from nav_msgs.msg import OccupancyGrid, Path
 from igvc_msgs.msg import motors, ekf_state
 from igvc_msgs.srv import EKFService
 import copy
@@ -10,7 +11,8 @@ import numpy as np
 from path_planner.mt_dstar_lite import mt_dstar_lite
 
 motor_pub = rospy.Publisher("/igvc/motors_raw", motors, queue_size=10)
-path_pub = rospy.Publisher("/igvc_nav/path_map", OccupancyGrid, queue_size=10)
+#path_pub = rospy.Publisher("/igvc_nav/path_map", OccupancyGrid, queue_size=10)
+local_path_pub = rospy.Publisher("/igvc/local_path", Path, queue_size=1)
 
 # Moving Target D* Lite
 map_init = False
@@ -20,6 +22,17 @@ planner = mt_dstar_lite()
 # Localization tracking
 prev_state = (0, 0)  # x, y
 GRID_SIZE = 0.1      # Map block size in meters #TODO: the grid size should be 0.1 I think
+
+def pose_stamped_from_position(x, y):
+    pose_stamped = PoseStamped()
+    pose_stamped.pose = Pose()
+
+    point = Point()
+    point.x = x
+    point.y = y
+    pose_stamped.pose.position = point
+
+    return pose_stamped
 
 def c_space_callback(c_space):
     global planner, map_init, path_failed, prev_state
@@ -92,17 +105,21 @@ def c_space_callback(c_space):
     print path
 
     if path is not None:
-        path_space = [0] * 200 * 200
-        itt = 100
-        for path_pos in path:
-            path_space[(200 * path_pos[0]) + path_pos[1]] = itt
-            itt -= 1
+        # path_space = [0] * 200 * 200
+        # itt = 100
+        # for path_pos in path:
+        #     path_space[(200 * path_pos[0]) + path_pos[1]] = itt
+        #     itt -= 1
 
-        path_msg = copy.deepcopy(c_space)
-        path_msg.data = path_space
+        # path_msg = copy.deepcopy(c_space)
+        # path_msg.data = path_space
 
-        # TODO: only publish the path map if this is the simulator
-        path_pub.publish(path_msg)
+        # # TODO: only publish the path map if this is the simulator
+        # path_pub.publish(path_msg)
+        local_path = Path()
+        local_path.poses = [pose_stamped_from_position(path_point[0], path_point[1]) for path_point in path]
+
+        local_path_pub.publish(local_path)
     else:
         # Set the path failed flag so we can fully replan
         path_failed = True

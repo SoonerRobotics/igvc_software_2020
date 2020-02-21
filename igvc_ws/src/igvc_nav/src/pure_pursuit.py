@@ -1,5 +1,6 @@
 import math
 
+# Gracefully stolen from https://github.com/xiaoxiae/PurePursuitAlgorithm/blob/master/src/main/PurePursuit.java
 class PurePursuit:
 
     def __init__(self):
