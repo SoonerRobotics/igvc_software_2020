@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import rospy
-from std_msgs.msg import String
+from std_msgs.msg import String, Header
 from geometry_msgs.msg import PoseStamped, Pose, Point
 from nav_msgs.msg import OccupancyGrid, Path
 from igvc_msgs.msg import motors, ekf_state
@@ -23,19 +23,22 @@ planner = mt_dstar_lite()
 prev_state = (0, 0)  # x, y
 GRID_SIZE = 0.1      # Map block size in meters #TODO: the grid size should be 0.1 I think
 
+# Path tracking
+path_seq = 0
+
 def pose_stamped_from_position(x, y):
     pose_stamped = PoseStamped()
     pose_stamped.pose = Pose()
 
     point = Point()
-    point.x = x
-    point.y = y
+    point.x = x * GRID_SIZE
+    point.y = y * GRID_SIZE
     pose_stamped.pose.position = point
 
     return pose_stamped
 
 def c_space_callback(c_space):
-    global planner, map_init, path_failed, prev_state
+    global planner, map_init, path_failed, prev_state, path_seq
 
     # Get the grid data
     grid_data = c_space.data
@@ -62,9 +65,9 @@ def c_space_callback(c_space):
         for col in range(200):
             cost_map[(row*200) + col] = 100
 
-    print "target:"
-    print best_pos
-    print ""
+    # print "target:"
+    # print best_pos
+    # print ""
 
     # Are we somehow on a bad spot?
     if grid_data[(100 * 200) + 100] == 1:
@@ -101,8 +104,8 @@ def c_space_callback(c_space):
         path = planner.replan(robot_pos, best_pos, cost_map) #, map_shift) # TODO: add in shifting
 
 
-    print "path:"
-    print path
+    # print "path:"
+    # print path
 
     if path is not None:
         # path_space = [0] * 200 * 200
@@ -115,7 +118,17 @@ def c_space_callback(c_space):
         # path_msg.data = path_space
 
         local_path = Path()
-        local_path.poses = [pose_stamped_from_position(200 - path_point[1], 200 - path_point[0]) for path_point in path]
+        
+        header = Header()
+        header.seq = path_seq
+        header.stamp = rospy.Time.now()
+        header.frame_id = "base_link"
+
+        local_path.header = header
+
+        path_seq += 1
+
+        local_path.poses = [pose_stamped_from_position(100 - path_point[1], 100 - path_point[0]) for path_point in path]
         local_path.poses.reverse() # reverse path becuz its backwards lol
 
         local_path_pub.publish(local_path)

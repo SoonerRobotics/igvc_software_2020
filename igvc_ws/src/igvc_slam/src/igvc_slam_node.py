@@ -76,7 +76,7 @@ def igvc_slam_node():
     map_sub = rospy.Subscriber("/igvc_vision/map", OccupancyGrid, lidar_callback, queue_size=10)
 
     # Make a timer to publish configuration spaces periodically
-    timer = rospy.Timer(rospy.Duration(secs=1), config_space_callback, oneshot=False)
+    timer = rospy.Timer(rospy.Duration(secs=0.05), config_space_callback, oneshot=False)
 
     # Wait for topic updates
     rospy.spin()

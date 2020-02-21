@@ -28,7 +28,7 @@ def odom_update(data):
     
     
     # lets just ignore odom because we arent even global LOL
-    pos = (100,100)
+    pos = (0,0)
     heading = 0
 
 def local_path_update(data):
@@ -40,7 +40,7 @@ def timer_callback(event):
         return
 
     lookahead = None
-    radius = 0.3 # Start with a radius of 0.1 meters
+    radius = 0.4 # Start with a radius of 0.1 meters
 
     while lookahead is None and radius <= 2: # Look until we hit 2 meters max
         lookahead = pp.get_lookahead_point(pos[0], pos[1], radius)
@@ -66,8 +66,8 @@ def timer_callback(event):
         delta = (delta + 180) % 360 - 180
 
         motor_pkt = motors()
-        motor_pkt.left = 0.4 + 0.6 * (delta / 180)
-        motor_pkt.right = 0.4 - 0.6 * (delta / 180)
+        motor_pkt.left = 2 + 1 * (delta / 180)
+        motor_pkt.right = 2 - 1 * (delta / 180)
         
         publy.publish(motor_pkt)
 
