@@ -30,3 +30,11 @@ repositories:
         type: git
         url: https://github.com/OpenKinect/libfreenect.git
         version: master
+    ../igvc_ws/src/deps/navigation:
+        type: git
+        url: https://github.com/ros-planning/navigation.git
+        version: melodic-devel
+    ../igvc_ws/src/deps/navigation_msgs:
+        type: git
+        url: https://github.com/ros-planning/navigation_msgs.git
+        version: ros1
