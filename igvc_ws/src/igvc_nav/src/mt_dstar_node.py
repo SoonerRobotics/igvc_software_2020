@@ -114,10 +114,9 @@ def c_space_callback(c_space):
         # path_msg = copy.deepcopy(c_space)
         # path_msg.data = path_space
 
-        # # TODO: only publish the path map if this is the simulator
-        # path_pub.publish(path_msg)
         local_path = Path()
-        local_path.poses = [pose_stamped_from_position(path_point[0], path_point[1]) for path_point in path]
+        local_path.poses = [pose_stamped_from_position(200 - path_point[1], 200 - path_point[0]) for path_point in path]
+        local_path.poses.reverse() # reverse path becuz its backwards lol
 
         local_path_pub.publish(local_path)
     else:

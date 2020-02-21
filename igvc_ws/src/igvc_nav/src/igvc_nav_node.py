@@ -18,8 +18,18 @@ def odom_update(data):
     position = data.pose.pose.position
     orientation = data.pose.pose.orientation
 
-    pos = (position.x, position.y)
-    heading = tf.transformations.euler_from_quaternion(orientation)[2]
+    # pos = (position.x, position.y)
+    # quaternion = (
+    #     orientation.x,
+    #     orientation.y,
+    #     orientation.z,
+    #     orientation.w)
+    # heading = math.degrees(tf.transformations.euler_from_quaternion(quaternion)[2])
+    
+    
+    # lets just ignore odom because we arent even global LOL
+    pos = (100,100)
+    heading = 0
 
 def local_path_update(data):
     points = [x.pose.position for x in data.poses] # Get points from Path
@@ -30,7 +40,7 @@ def timer_callback(event):
         return
 
     lookahead = None
-    radius = 0.1 # Start with a radius of 0.1 meters
+    radius = 0.3 # Start with a radius of 0.1 meters
 
     while lookahead is None and radius <= 2: # Look until we hit 2 meters max
         lookahead = pp.get_lookahead_point(pos[0], pos[1], radius)
@@ -50,8 +60,8 @@ def timer_callback(event):
         # print('want to move x:' + str(lookahead[0] - pos[0]))
         # print('want to move y:' + str(lookahead[1] - pos[1]))
 
-        print('i think my heading is ' + str(heading))
-        print('i want heading ' + str(heading_to_la))
+        # print('i think my heading is ' + str(heading))
+        # print('i want heading ' + str(heading_to_la))
         delta = heading_to_la - heading
         delta = (delta + 180) % 360 - 180
 
