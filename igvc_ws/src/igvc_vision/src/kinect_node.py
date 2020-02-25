@@ -35,18 +35,13 @@ def get_depth(timer_event):
 
 
 def init_kinect_node():
-<<<<<<< HEAD
     rospy.init_node("kinect_node", anonymous = False)
-=======
-    global kinect_rgb_pub, kinect_depth_pub
-    rospy.init_node("kinect_node", anonymous = True)
->>>>>>> b58e1db7dbd1622dd40b979f594350fecd0b114b
 
     kinect_rgb_pub = rospy.Publisher('/igvc/kinect_rbg/', Image, queue_size = 10)
     kinect_depth_pub = rospy.Publisher('/igvc/kinect_depth/', Image, queue_size = 10)
 
-    rospy.Timer(rospy.Duration(secs = 0.005), get_rgb)
-    rospy.Timer(rospy.Duration(secs = 0.005), get_depth)
+    rospy.Timer(rospy.Duration(secs = 0.1), get_rgb)
+    rospy.Timer(rospy.Duration(secs = 0.1), get_depth)
 
     rospy.spin()
 
