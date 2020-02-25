@@ -37,7 +37,7 @@ def get_depth(timer_event):
 
 
 def init_kinect_node():
-    rospy.init_node("kinect_node", anonymous = True)
+    rospy.init_node("kinect_node", anonymous = False)
 
     kinect_rgb_pub = rospy.Publisher('/igvc/kinect_rbg/image_raw', kinect_rgb, queue_size = 10)
     kinect_depth_pub = rospy.Publisher('/igvc/kinect_depth/image_raw', kinect_depth, queue_size = 10)
