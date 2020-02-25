@@ -1,0 +1,17 @@
+name: IGVC Compile Test
+
+on:
+  pull_request:
+    branches:
+    - master
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build docker image
+        run: docker build . --file Dockerfile
+
