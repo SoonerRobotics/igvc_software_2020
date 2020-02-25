@@ -18,8 +18,8 @@ pp.add_point(-97.4386215209961, 35.1949625611)
 
 def ekf_update(data):
     global pos, heading
-    pos = (data.x_k[1] * 180/math.pi, data.x_k[0] * 180/math.pi)
-    heading = data.x_k[2] * 180/math.pi
+    pos = (data.longitude * 180/math.pi, data.latitude * 180/math.pi)
+    heading = data.global_heading * 180/math.pi
 
 def path_update(data):
     global pp
