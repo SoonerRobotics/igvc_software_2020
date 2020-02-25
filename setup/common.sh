@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ## update sources
-sudo apt update
+sudo apt-get update
 
 ## udev
 
@@ -15,7 +15,7 @@ service udev restart
 
 ## vcs
 # Install pip
-sudo apt install python-pip -y
+sudo apt-get install python-pip -y
 
 # Install vcstool
 sudo pip install vcstool
@@ -23,9 +23,8 @@ sudo pip install vcstool
 # Install dependencies
 vcs import < igvc.deps
 
-
 # Install library dependencies
-sudo apt install libspatialindex-dev -y
+sudo apt-get install libspatialindex-dev -y
 
 # Install python dependencies
 pip install -r requirements.txt
@@ -35,7 +34,4 @@ sudo apt-get install libsdl-image1.2-dev and -y
 sudo apt-get install libsdl-dev -y
 
 # costmap_2d dependencies
-sudo apt-get install ros-melodic-tf2-sensor-msgs -y
-
-# tf2_sensor_msgs dependencies
 sudo apt-get install ros-melodic-tf2-sensor-msgs -y
