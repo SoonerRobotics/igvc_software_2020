@@ -4,7 +4,7 @@ from math import degrees
 from matplotlib import pyplot as plt
 
 import rospy
-from igvc_msgs.msg import ekf_state, ekf_convergence
+from igvc_msgs.msg import EKFState, EKFConvergence
 from roslib.packages import get_pkg_dir
 
 pkg_path = get_pkg_dir("igvc_ekf")
@@ -21,9 +21,17 @@ def plot_x(msg):
         plt.pause(0.00000000001)
 
         csv_file = open(pkg_path + "/data/export.csv", "a")
-        state_str = str(counter/10) + "," + str(degrees(msg.x_k[0])) + "," + str(degrees(msg.x_k[1])) + ","
-        for i in range(2, 11):
-            state_str += str(msg.x_k[i]) + ","
+        state_str = str(counter/10) + "," + str(degrees(msg.latitude)) + "," + str(degrees(msg.longitude)) + ","
+        state_str += str(msg.global_heading) + ","
+        state_str += str(msg.x) + ","
+        state_str += str(msg.y) + ","
+        state_str += str(msg.yaw) + ","
+        state_str += str(msg.velocity) + ","
+        state_str += str(msg.yaw_rate) + ","
+        state_str += str(msg.left_angular_vel) + ","
+        state_str += str(msg.right_angular_vel) + ","
+        state_str += str(msg.acceleration) + ","
+
         csv_file.write(state_str + "\n")
         csv_file.close()
 
@@ -51,8 +59,8 @@ if __name__ == '__main__':
 
     rospy.init_node("plotter")
 
-    rospy.Subscriber("/igvc_ekf/filter_output", ekf_state, plot_x)
-    rospy.Subscriber("/igvc_ekf/ekf_convergence", ekf_convergence, plot_conv)
+    rospy.Subscriber("/igvc_ekf/filter_output", EKFState, plot_x)
+    rospy.Subscriber("/igvc_ekf/EKFConvergence", EKFConvergence, plot_conv)
 
     csv_file = open(pkg_path + "/data/export.csv", "w")
     csv_file.write("id, lat, lon, theta, x, y, psi, vel, psi_dot, left_v, right_v, accel\n")
