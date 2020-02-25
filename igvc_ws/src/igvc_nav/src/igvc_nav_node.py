@@ -2,7 +2,7 @@
 import rospy
 import math
 from pure_pursuit import PurePursuit
-from igvc_msgs.msg import ekf_state, path, motors
+from igvc_msgs.msg import EKFState, path, motors
 
 pos = None
 heading = None
@@ -55,15 +55,15 @@ def timer_callback(event):
         motor_pkt = motors()
         motor_pkt.left = 0.4 + 0.6 * (delta / 180)
         motor_pkt.right = 0.4 - 0.6 * (delta / 180)
-        
+
         publy.publish(motor_pkt)
 
 def nav():
     rospy.init_node('nav_node', anonymous=True)
 
-    rospy.Subscriber("/igvc_ekf/filter_output", ekf_state, ekf_update)
+    rospy.Subscriber("/igvc_ekf/filter_output", EKFState, ekf_update)
     rospy.Subscriber("/igvc/path", path, path_update)
-    
+
     rospy.Timer(rospy.Duration(0.05), timer_callback)
 
     rospy.spin()

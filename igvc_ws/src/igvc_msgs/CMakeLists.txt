@@ -54,10 +54,10 @@ add_message_files(
   lane_error.msg
   velocity.msg
   motors.msg
-  ekf_state.msg
+  EKFState.msg
   gps.msg
   imuodom.msg
-  ekf_convergence.msg
+  EKFConvergence.msg
   path.msg
 )
 
