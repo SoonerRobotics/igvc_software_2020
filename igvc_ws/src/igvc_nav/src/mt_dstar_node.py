@@ -3,7 +3,7 @@
 import rospy
 from std_msgs.msg import String
 from nav_msgs.msg import OccupancyGrid
-from igvc_msgs.msg import motors, ekf_state
+from igvc_msgs.msg import motors, EKFState
 from igvc_msgs.srv import EKFService
 import copy
 import numpy as np
@@ -74,15 +74,15 @@ def c_space_callback(c_space):
         xk = robot_state()
 
         # Update the robot's position on the map
-        robot_pos = (100 - int(xk.state.x_k[3] / GRID_SIZE), 100 + int(xk.state.x_k[4] / GRID_SIZE))
+        robot_pos = (100 - int(xk.state.x / GRID_SIZE), 100 + int(xk.state.y / GRID_SIZE))
 
         # Transform the map to account for heading changes
-        hdg = xk.state.x_k[5]
+        hdg = xk.state.yaw
         #TODO: rotate map to 0 degree heading
 
         # Calculate the map shift based on the change in EKF state
-        map_shift = (int(xk.state.x_k[3] / GRID_SIZE) - prev_state[0], int(xk.state.x_k[4] / GRID_SIZE) - prev_state[1])
-        prev_state = (int(xk.state.x_k[3] / GRID_SIZE), int(xk.state.x_k[4] / GRID_SIZE))
+        map_shift = (int(xk.state.x / GRID_SIZE) - prev_state[0], int(xk.state.y / GRID_SIZE) - prev_state[1])
+        prev_state = (int(xk.state.x / GRID_SIZE), int(xk.state.y / GRID_SIZE))
 
         # Request the planner replan the path
         path = planner.replan(robot_pos, best_pos, cost_map) #, map_shift) # TODO: add in shifting

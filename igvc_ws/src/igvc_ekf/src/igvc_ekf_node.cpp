@@ -8,8 +8,8 @@
 #include <ros/package.h>
 
 #include "igvc_ekf/ekf.h"
-#include "igvc_msgs/ekf_state.h"
-#include "igvc_msgs/ekf_convergence.h"
+#include "igvc_msgs/EKFState.h"
+#include "igvc_msgs/EKFConvergence.h"
 #include "igvc_msgs/gps.h"
 #include "igvc_msgs/imuodom.h"
 #include "igvc_msgs/velocity.h"
@@ -37,25 +37,39 @@ std::ofstream accel_file;
 std::ofstream hdg_file;
 
 
+igvc_msgs::EKFState encodeEKFState(Eigen::VectorXd x)
+{
+    igvc_msgs::EKFState ekf_state;
+
+    ekf_state.latitude = x(0);
+    ekf_state.longitude = x(1);
+    ekf_state.global_heading = x(2);
+    ekf_state.x = x(3);
+    ekf_state.y = x(4);
+    ekf_state.yaw = x(5);
+    ekf_state.velocity = x(6);
+    ekf_state.yaw_rate = x(7);
+    ekf_state.left_angular_vel = x(8);
+    ekf_state.right_angular_vel = x(9);
+    ekf_state.acceleration = x(10);
+
+    return ekf_state;
+}
+
+
 void updateEKF(const ros::TimerEvent& time_event)
 {
     // If all sensor data has been received once
     if(data_init & 0xF)
     {
         // EKF state message
-        igvc_msgs::ekf_state state;
+        igvc_msgs::EKFState state;
 
         // Update the extended kalman filter
         x = ekf.run_filter(z, u);
 
-        // Construct the state vector to publish to other modules
-        for (int i = 0; i < 11; ++i)
-        {
-            state.x_k[i] = x(i);
-        }
-
         // Publish predicted state
-        output_pub.publish(state);
+        output_pub.publish(encodeEKFState(x));
     }
 }
 
@@ -64,7 +78,7 @@ void updateConvergence(const ros::TimerEvent& timer_event)
     // If all the sensor data has been received at least once, start publishing convergence
     if(data_init & 0xF)
     {
-        igvc_msgs::ekf_convergence converge;
+        igvc_msgs::EKFConvergence converge;
 
         converge.data = ekf.get_convergence();
 
@@ -76,10 +90,7 @@ bool get_robot_state(igvc_msgs::EKFService::Request  &request,
                      igvc_msgs::EKFService::Response &response)
 {
     // Construct the state vector to publish to other modules
-    for (int i = 0; i < 11; ++i)
-    {
-        response.state.x_k[i] = x(i);
-    }
+    response.state = encodeEKFState(x);
 
     return true;
 }
@@ -205,8 +216,8 @@ int main(int argc, char** argv)
     ekf.init(x);
 
     // Publishers
-    output_pub = ekf_node.advertise<igvc_msgs::ekf_state>(ekf_node.resolveName("/igvc_ekf/filter_output"), 10);
-    convergence_pub = ekf_node.advertise<igvc_msgs::ekf_convergence>(ekf_node.resolveName("/igvc_ekf/ekf_convergence"), 10);
+    output_pub = ekf_node.advertise<igvc_msgs::EKFState>(ekf_node.resolveName("/igvc_ekf/filter_output"), 10);
+    convergence_pub = ekf_node.advertise<igvc_msgs::EKFConvergence>(ekf_node.resolveName("/igvc_ekf/EKFConvergence"), 10);
 
     // Service
     ros::ServiceServer get_state_srv = ekf_node.advertiseService("/igvc_ekf/get_robot_state", &get_robot_state);

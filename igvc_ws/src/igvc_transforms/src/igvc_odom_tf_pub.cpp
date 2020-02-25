@@ -1,13 +1,13 @@
 #include <ros/ros.h>
 #include <tf/transform_broadcaster.h>
 #include <nav_msgs/Odometry.h>
-#include <igvc_msgs/ekf_state.h>
+#include <igvc_msgs/EKFState.h>
 #include <geometry_msgs/PoseWithCovarianceStamped.h>
 
 // Robot state information
 double x = 0.0;
 double y = 0.0;
-double hdg = 11.0;
+double hdg = 0.0;
 double vx = 0.0;
 double vy = 0.0;
 double vhdg = 0.0;
@@ -17,17 +17,17 @@ double x_offset = 0.0;
 double y_offset = 0.0;
 double hdg_offset = 0.0;
 
-void ekf_callback(const igvc_msgs::ekf_state::ConstPtr& ekf)
+void ekf_callback(const igvc_msgs::EKFState::ConstPtr& ekf)
 {
     // Positional
-    //x = ekf->x_k[3];
-    //y = ekf->x_k[4];
-    //hdg = ekf->x_k[5];
+    x = ekf->x;
+    y = ekf->y;
+    hdg = ekf->yaw;
 
     // Rates
-    vx = ekf->x_k[6] * cos(hdg);
-    vy = ekf->x_k[6] * sin(hdg);
-    vhdg = ekf->x_k[7];
+    vx = ekf->velocity * cos(hdg);
+    vy = ekf->velocity * sin(hdg);
+    vhdg = ekf->yaw_rate;
 }
 
 void init_pose_callback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& init_pose)
@@ -55,16 +55,6 @@ int main(int argc, char** argv){
 
     ros::spinOnce();               // check for incoming messages
     current_time = ros::Time::now();
-
-    //compute odometry in a typical way given the velocities of the robot
-    double dt = (current_time - last_time).toSec();
-    double delta_x = (vx * cos(hdg) - vy * sin(hdg)) * dt;
-    double delta_y = (vx * sin(hdg) + vy * cos(hdg)) * dt;
-    double delta_th = vhdg * dt;
-
-    x += delta_x;
-    y += delta_y;
-    hdg += delta_th;
 
     //since all odometry is 6DOF we'll need a quaternion created from yaw
     geometry_msgs::Quaternion odom_quat = tf::createQuaternionMsgFromYaw(hdg + hdg_offset);
