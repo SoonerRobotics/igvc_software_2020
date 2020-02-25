@@ -45,11 +45,10 @@ def init_kinect_node():
     kinect_rgb_pub = rospy.Publisher('/igvc/kinect_rbg/', Image, queue_size = 10)
     kinect_depth_pub = rospy.Publisher('/igvc/kinect_depth/', Image, queue_size = 10)
 
-    rospy.Timer(rospy.Duration(secs = 0.1), get_rgb)
-    rospy.Timer(rospy.Duration(secs = 0.1), get_depth)
+    rospy.Timer(rospy.Duration(secs = 0.03), get_rgb)
+    rospy.Timer(rospy.Duration(secs = 0.03), get_depth)
 
     rospy.spin()
-
 
 if __name__ == '__main__':
     try:
