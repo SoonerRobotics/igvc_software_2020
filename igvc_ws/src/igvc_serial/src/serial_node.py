@@ -61,15 +61,18 @@ class GPSSerialReadThread(threading.Thread):
         while not rospy.is_shutdown():
             coord = self.serial_obj.readline() # Assume all messages end in newline character. This is standard among SCR IGVC serial messages.
 
-            if coord:
-                coord_json = json.loads(coord)
+            try:
+                if coord:
+                    coord_json = json.loads(coord)
 
-                coord_msg = gps()
-                coord_msg.latitude = coord_json['latitude']
-                coord_msg.longitude = coord_json['longitude']
-                coord_msg.hasSignal = coord_json['hasSignal']
+                    coord_msg = gps()
+                    coord_msg.latitude = coord_json['latitude']
+                    coord_msg.longitude = coord_json['longitude']
+                    coord_msg.hasSignal = coord_json['hasSignal']
 
-                self.publisher.publish(coord_msg)
+                    self.publisher.publish(coord_msg)
+            except ValueError:
+                pass
 
 # Constructs motor message from given data and sends to serial
 def motors_out(data):
