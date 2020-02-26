@@ -11,6 +11,10 @@ import copy
 import numpy as np
 from path_planner.mt_dstar_lite import mt_dstar_lite
 
+#temps
+import matplotlib as mpl
+from matplotlib import pyplot as plt
+
 motor_pub = rospy.Publisher("/igvc/motors_raw", motors, queue_size=10)
 #path_pub = rospy.Publisher("/igvc_nav/path_map", OccupancyGrid, queue_size=10)
 global_path_pub = rospy.Publisher("/igvc/global_path", Path, queue_size=1)
@@ -57,55 +61,54 @@ def pose_stamped_from_position(x, y):
 def c_space_callback(c_space):
     global grid_data, cost_map, map_reference, map_init, best_pos
 
+    if curEKF is None:
+        return
+
     grid_data = c_space.data
 
-    # get position that we are at when map is made :)
-    map_reference = (curEKF.x_k[4], curEKF.x_k[3])
-    map_init = False
-
     # Make a costmap
-    cost_map = [0] * 200 * 200
+    temp_cost_map = [0] * 200 * 200
 
     # Find the best position
-    best_pos = (0,0)
+    temp_best_pos = (0,0)
     best_pos_cost = 1000000
 
     # Only look forward for the goal
     for row in range(101):
         for col in range(200):
-            cost_map[(row * 200) + col] = grid_data[(row * 200) + col]
+            temp_cost_map[(row * 200) + col] = grid_data[(row * 200) + col]
             if grid_data[(row * 200) +  col] == 0:
-                new_cost = abs(row-75) + abs(col-100)
+                new_cost = abs(row-55) + abs(col-100)
                 if new_cost < best_pos_cost:
                     best_pos_cost = new_cost
-                    best_pos = (row, col)
+                    temp_best_pos = (row, col)
 
     # Consider backwards to be an obstacle
     for row in range(101, 200):
         for col in range(200):
-            cost_map[(row*200) + col] = 100
+            temp_cost_map[(row*200) + col] = 100
+
+
+    map_reference = (curEKF.x_k[3], curEKF.x_k[4])
+    cost_map = temp_cost_map
+    best_pos = temp_best_pos
+    map_init = False
 
 def make_map(c_space):
     global planner, map_init, path_failed, prev_state, path_seq, grid_data
 
-    if grid_data is None or curEKF is None:
-        return
-
-    # Are we somehow on a bad spot?
-    if grid_data[(100 * 200) + 100] == 1:
+    if cost_map is None or curEKF is None:
         return
 
     # Reset the path
     path = None
 
-    robot_pos = (100 - int((curEKF.x_k[4] - map_reference[0]) / GRID_SIZE), 100 + int((curEKF.x_k[3] - map_reference[1]) / GRID_SIZE))
-
-    print("robot_pos", robot_pos)
+    robot_pos = (100 + int((curEKF.x_k[3] - map_reference[0]) / GRID_SIZE), 100 + int((curEKF.x_k[4] - map_reference[1]) / GRID_SIZE))
 
     # MOVING TARGET D*LITE
     # If this is the first time receiving a map, or if the path failed to be made last time (for robustness),
     # initialize the path planner and plan the first path
-    if map_init == False or path_failed == True:
+    if True:
         planner.initialize(200, 200, robot_pos, best_pos, cost_map)
         path = planner.plan()
         map_init = True
@@ -121,7 +124,6 @@ def make_map(c_space):
 
         # Request the planner replan the path
         path = planner.replan(robot_pos, best_pos, cost_map) #, map_shift) # TODO: add in shifting
-
 
     # print "path:"
     # print path
@@ -142,35 +144,45 @@ def make_map(c_space):
 
         def path_point_to_global(pp0, pp1):
             # Local path
-            x = (100 - pp1) * GRID_SIZE
-            y = (100 - pp0) * GRID_SIZE
+            x = (robot_pos[0] - pp0) * GRID_SIZE
+            y = (robot_pos[1] - pp1) * GRID_SIZE
 
             # Translate to global path
-            dx = curEKF.x_k[4]
-            dy = curEKF.x_k[3]
+            dx = curEKF.x_k[3]
+            dy = curEKF.x_k[4]
             psi = curEKF.x_k[5]
 
-            x = x * math.cos(psi) - y * math.sin(psi) + dx
-            y = y * math.cos(psi) + x * math.sin(psi) + dy
+            new_x = x * math.cos(psi) - y * math.sin(psi) + dx
+            new_y = y * math.cos(psi) + x * math.sin(psi) + dy
 
-            return pose_stamped_from_position(x, y)
+            return pose_stamped_from_position(new_x, new_y)
 
         global_path.poses = [path_point_to_global(path_point[0], path_point[1]) for path_point in path]
         global_path.poses.reverse() # reverse path becuz its backwards lol
 
         global_path_pub.publish(global_path)
 
-        def path_point_to_local(pp0, pp1):
-            # Local path
-            x = pp1 * GRID_SIZE
-            y = pp0 * GRID_SIZE
+        # make a color map of fixed colors
+        cmap = mpl.colors.ListedColormap(['white','pink','red','black','green'])
+        bounds=[-1,20,45,55,101]
+        norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
 
-            return pose_stamped_from_position(x, y)
+        temp_grid = copy.deepcopy(cost_map)
 
-        local_path.poses = [path_point_to_local(path_point[0], path_point[1]) for path_point in path]
-        local_path.poses.reverse() # reverse path becuz its backwards lol
+        plt.figure(1)
 
-        local_path_pub.publish(local_path)
+        for point in path:
+            temp_grid[point[1] + 200 * point[0]] = 25
+
+        temp_grid[robot_pos[1] + 200 * robot_pos[0]] = 50
+        temp_grid[best_pos[1] + 200 * best_pos[0]] = 50
+
+        # tell imshow about color map so that only set colors are used
+        plt.imshow(np.reshape(temp_grid, (200, 200)),interpolation='nearest',
+                            cmap = cmap,norm=norm)
+
+        plt.draw()
+        plt.pause(0.00000000001)
         
     else:
         # Set the path failed flag so we can fully replan
@@ -197,7 +209,10 @@ def mt_dstar_node():
     rospy.Subscriber("/igvc_ekf/filter_output", ekf_state, ekf_callback)
 
     # Make a timer to publish cnew paths
-    timer = rospy.Timer(rospy.Duration(secs=0.05), make_map, oneshot=False)
+    timer = rospy.Timer(rospy.Duration(secs=0.1), make_map, oneshot=False)
+
+    plt.ion()
+    plt.show()
 
     # Wait for topic updates
     rospy.spin()

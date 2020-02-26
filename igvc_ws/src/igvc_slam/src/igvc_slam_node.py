@@ -41,7 +41,10 @@ def lidar_callback(data):
                         new_x = 199 - (x + x_i)
                         new_y = 199 - (y + y_i)
                         if 0 <= new_x < 200 and 0 <= new_y < 200 and dist <= 25:
-                            lidar_hidden_layer[(x + x_i) + 200 * (y + y_i)] = 100
+                            lidar_hidden_layer[((x + x_i)) + 200 * (y + y_i)] = 100
+                        elif 0 <= new_x < 200 and 0 <= new_y < 200 and dist <= 49:
+                            # linearly decay
+                            lidar_hidden_layer[((x + x_i)) + 200 * (y + y_i)] = dist * (-100/24) + (1225/6)
 
     # After updating the hidden layer, swap the hidden layer to the foreground to apply the configuration space
     tmp_cfg_space = lidar_config_data
@@ -76,7 +79,7 @@ def igvc_slam_node():
     map_sub = rospy.Subscriber("/igvc_vision/map", OccupancyGrid, lidar_callback, queue_size=10)
 
     # Make a timer to publish configuration spaces periodically
-    timer = rospy.Timer(rospy.Duration(secs=1), config_space_callback, oneshot=False)
+    timer = rospy.Timer(rospy.Duration(secs=0.1), config_space_callback, oneshot=False)
 
     # Wait for topic updates
     rospy.spin()

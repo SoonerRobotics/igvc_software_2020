@@ -49,7 +49,7 @@ void onLidarCallback(const sensor_msgs::LaserScan::ConstPtr &msg)
 			float x = ranges[i] * cos(angle);
 			float y = ranges[i] * sin(angle);
 			// Convert to number of indices away from LiDAR
-			int index = (LIDAR_POS - round(x / RESOLUTION)) * DIMENSIONS + (LIDAR_POS + round(y / RESOLUTION));
+			int index = (LIDAR_POS - round(x / RESOLUTION)) * DIMENSIONS + (LIDAR_POS - round(y / RESOLUTION));
 			// Save value to save on text
 			int cur_val = lidar_data[index];
 			// If the indice already has an obstacle, increment "certainty"

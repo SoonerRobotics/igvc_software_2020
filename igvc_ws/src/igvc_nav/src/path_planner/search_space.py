@@ -54,8 +54,11 @@ class SearchSpace:
     def load_search_space_from_map(self, map_data):
         for i in range(self.H):
             for j in range(self.W):
-                if map_data[(self.H * i) + j] != 0:
+                cost = map_data[(self.H * i) + j]
+                if cost >= 100 or cost < 0:
                     self.grid[i][j].set_cost(Node.INFINITY)
+                else:
+                    self.grid[i][j].set_cost(cost)
 
     def get_deleteable_nodes(self, start_node):
         # Define the lists for this search
