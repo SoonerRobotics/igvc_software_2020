@@ -5,8 +5,11 @@ import json
 import threading
 import serial
 
-#from std_msgs.msg import String
 from igvc_msgs.msg import motors, gps
+
+# ROS node that facilitates all serial communications within the robot
+# Subscribes to motor values
+# Publishes GPS coordinates
 
 serials = {}
 
@@ -32,31 +35,39 @@ class SerialReadThread(threading.Thread):
             if line:
                 self.publisher.publish(line)
 
+# Constructs motor message from given data and sends to serial
 def motors_out(data):
+
+    # JSON packet to be sent
     motion_pkt = {
         "motorLeft": data.left,
         "motorRight": data.right
     }
 
+    # Encode JSON string to bytes
     json_dump = json.dumps(motion_pkt, separators = (',', ':'))
-    out = (json_dump + "\n").encode() # encode json string to bytes
+    out = (json_dump + "\n").encode()
 
     serials["motor"].write(out)
 
+# Receives longitude and latitude coordinates from the GPS,
+# then publishes them as a gps message
 def get_gps_sensor_data(timer_event):
+    
     global gps_serial
     global gps_pub
 
     # Read the coordinate packet
     coord = gps_serial.read_until()
 
-    # Create gps message from json packet read
+    # Construct gps message with given packet and publish
     try:
         coord_json = json.loads(coord)
-        coord_msg = gps()
 
+        coord_msg = gps()
         coord_msg.latitude = coord_json['latitude']
         coord_msg.longitude = coord_json['longitude']
+        coord_msg.hasSignal = coord_json['hasSignal']
 
         gps_pub.publish(coord_msg)
 
@@ -64,22 +75,24 @@ def get_gps_sensor_data(timer_event):
         pass
 
 
+# Initialize the serial node
+# Node handles all serial communication within the robot (motor, GPS)
 def init_serial_node():
 
-    # Setup node
-    rospy.init_node("serial_node", anonymous = True)
+    global gps_serial
+    global gps_pub
 
-    # Create Serial objects to read and write from serial devices
+    # Setup serial node
+    rospy.init_node("serial_node", anonymous = False)
+
+    # Setup motor serial and subscriber
     motor_serial = serials["motor"] = serial.Serial(port = '/dev/igvc-nucleo-319', baudrate = 115200)
-    gps_serial = serials["gps"] = serial.Serial(port = '', baudrate = 115200)
+    motor_sub = rospy.Subscriber('/igvc/motors_raw', motors, motors_out)
 
-    # Set up a publisher for publishing gps coordinates
+    # Setup GPS serial and publisher
+    gps_serial = serials["gps"] = serial.Serial(port = '/dev/ttyACM0', baudrate = 9600)
     gps_pub = rospy.Publisher('/igvc/gps', gps, queue_size = 10)
-    # Reads gps coordinates at 200 Hz
-    gps_sensor_timer = rospy.Timer(rospy.Duration(secs = 0.005), get_gps_sensor_data)
-
-    # Subscribe to necessary topics
-    motors_sub = rospy.Subscriber('/igvc/motors_raw', motors, motors_out)
+    gps_sensor_timer = rospy.Timer(rospy.Duration(secs = 0.5), get_gps_sensor_data)
     
     # Wait for topic updates
     rospy.spin()
@@ -87,11 +100,6 @@ def init_serial_node():
     # Close the serial ports when program ends
     motor_serial.close()
     gps_serial.close()
-
-    # # The following lines are an example of how to create a serial reading object thread
-    # motor_response_thread = SerialReadThread(serial_obj = serials["motor"], topic = '/igvc/serial/motors_in')
-    # motor_response_thread.start()
-
 
 if __name__ == '__main__':
     try:
