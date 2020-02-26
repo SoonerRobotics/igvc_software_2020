@@ -5,7 +5,8 @@ import json
 import threading
 import serial
 
-from igvc_msgs.msg import motors, gps
+from std_msgs.msg import String
+from igvc_msgs.msg import motors, velocity, gps
 
 # ROS node that facilitates all serial communications within the robot
 # Subscribes to motor values
@@ -26,14 +27,20 @@ class SerialReadThread(threading.Thread):
         self.serial_obj.timeout = 1
 
         # Assumes String type for now. This class will need to be adapted in the future for different message types.
-        #self.publisher = rospy.Publisher(topic, String, queue_size=10)
+        self.publisher = rospy.Publisher(topic, velocity, queue_size=1)
 
     def run(self):
         while not rospy.is_shutdown():
             line = self.serial_obj.readline() # Assume all messages end in newline character. This is standard among SCR IGVC serial messages.
 
             if line:
-                self.publisher.publish(line)
+                print(line)
+                vels = line.split(",")
+                velPkt = velocity()
+                velPkt.leftVel = float(vels[0])
+                velPkt.rightVel = float(vels[1])
+
+                self.publisher.publish(velPkt)
 
 # Constructs motor message from given data and sends to serial
 def motors_out(data):
@@ -41,7 +48,7 @@ def motors_out(data):
     # JSON packet to be sent
     motion_pkt = {
         "motorLeft": data.left,
-        "motorRight": data.right
+        "motorRight": data.right,
     }
 
     # Encode JSON string to bytes
@@ -86,8 +93,12 @@ def init_serial_node():
     rospy.init_node("serial_node", anonymous = False)
 
     # Setup motor serial and subscriber
-    motor_serial = serials["motor"] = serial.Serial(port = '/dev/igvc-nucleo-319', baudrate = 115200)
+    motor_serial = serials["motor"] = serial.Serial(port = '/dev/igvc-nucleo-120', baudrate = 115200)
     motor_sub = rospy.Subscriber('/igvc/motors_raw', motors, motors_out)
+    
+    # # The following lines are an example of how to create a serial reading object thread
+    motor_response_thread = SerialReadThread(serial_obj = serials["motor"], topic = '/igvc/velocity')
+    motor_response_thread.start()
 
     # Setup GPS serial and publisher
     gps_serial = serials["gps"] = serial.Serial(port = '/dev/ttyACM0', baudrate = 9600)
