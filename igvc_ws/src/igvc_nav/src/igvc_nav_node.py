@@ -4,7 +4,7 @@ import math
 import tf
 from pure_pursuit import PurePursuit
 from nav_msgs.msg import Path, Odometry
-from igvc_msgs.msg import motors
+from igvc_msgs.msg import motors, ekf_state
 
 pos = None
 heading = None
@@ -12,11 +12,11 @@ publy = rospy.Publisher('/igvc/motors_raw', motors, queue_size=1)
 
 pp = PurePursuit()
 
-def odom_update(data):
+def ekf_update(data):
     global pos, heading
 
-    position = data.pose.pose.position
-    orientation = data.pose.pose.orientation
+    # position = data.pose.pose.position
+    # orientation = data.pose.pose.orientation
 
     # pos = (position.x, position.y)
     # quaternion = (
@@ -25,13 +25,11 @@ def odom_update(data):
     #     orientation.z,
     #     orientation.w)
     # heading = math.degrees(tf.transformations.euler_from_quaternion(quaternion)[2])
-    
-    
-    # lets just ignore odom because we arent even global LOL
-    pos = (0,0)
-    heading = 0
 
-def local_path_update(data):
+    pos = (data.x_k[4], data.x_k[3])
+    heading = 360 - math.degrees(data.x_k[5])
+
+def global_path_update(data):
     points = [x.pose.position for x in data.poses] # Get points from Path
     pp.set_points([(_point.x, _point.y) for _point in points]) # Give PurePursuit the points
 
@@ -40,7 +38,7 @@ def timer_callback(event):
         return
 
     lookahead = None
-    radius = 0.4 # Start with a radius of 0.1 meters
+    radius = 0.3 # Start with a radius of 0.1 meters
 
     while lookahead is None and radius <= 2: # Look until we hit 2 meters max
         lookahead = pp.get_lookahead_point(pos[0], pos[1], radius)
@@ -66,16 +64,18 @@ def timer_callback(event):
         delta = (delta + 180) % 360 - 180
 
         motor_pkt = motors()
-        motor_pkt.left = 2 + 1 * (delta / 180)
-        motor_pkt.right = 2 - 1 * (delta / 180)
+        motor_pkt.left = 0.6 + 0.4 * (delta / 180)
+        motor_pkt.right = 0.6 - 0.4 * (delta / 180)
         
         publy.publish(motor_pkt)
+    else:
+        print("LOL WHERE IS THE PATHHHHHH")
 
 def nav():
     rospy.init_node('nav_node', anonymous=True)
 
-    rospy.Subscriber("/odom", Odometry, odom_update)
-    rospy.Subscriber("/igvc/local_path", Path, local_path_update)
+    rospy.Subscriber("/igvc_ekf/filter_output", ekf_state, ekf_update)
+    rospy.Subscriber("/igvc/global_path", Path, global_path_update)
     
     rospy.Timer(rospy.Duration(0.05), timer_callback)
 
