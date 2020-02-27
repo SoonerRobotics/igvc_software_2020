@@ -81,9 +81,11 @@ def timer_callback(event):
 
         # print('diff', delta)
 
+        percent_bad = delta/180
+
         motor_pkt = motors()
-        motor_pkt.left = 0.6 + 0.2 * (delta / 180)
-        motor_pkt.right = 0.6 - 0.2 * (delta / 180)
+        motor_pkt.left = 0.7 * (1 - abs(percent_bad)) + 0.3 * percent_bad
+        motor_pkt.right = 0.7 * (1 - abs(percent_bad)) - 0.3 * percent_bad
         
         publy.publish(motor_pkt)
 
@@ -97,7 +99,7 @@ def nav():
     rospy.Subscriber("/igvc_ekf/filter_output", ekf_state, ekf_update)
     rospy.Subscriber("/igvc/global_path", Path, global_path_update)
     
-    rospy.Timer(rospy.Duration(0.05), timer_callback)
+    rospy.Timer(rospy.Duration(0.03), timer_callback)
 
     plt.ion()
     plt.show()

@@ -77,8 +77,8 @@ def c_space_callback(c_space):
     for row in range(101):
         for col in range(200):
             temp_cost_map[(row * 200) + col] = grid_data[(row * 200) + col]
-            if grid_data[(row * 200) +  col] == 0:
-                new_cost = abs(row-55) + abs(col-100)
+            if grid_data[(row * 200) +  col] < 100:
+                new_cost = abs(row-55) + abs(col-100) + grid_data[(row * 200) +  col]
                 if new_cost < best_pos_cost:
                     best_pos_cost = new_cost
                     temp_best_pos = (row, col)
@@ -162,28 +162,20 @@ def make_map(c_space):
 
         global_path_pub.publish(global_path)
 
-        # make a color map of fixed colors
-        cmap = mpl.colors.ListedColormap(['white','pink','red','black','green'])
-        bounds=[-1,20,45,55,101]
-        norm = mpl.colors.BoundaryNorm(bounds, cmap.N)
+        # plt.figure(1)
 
-        temp_grid = copy.deepcopy(cost_map)
+        # for point in path:
+        #     cost_map_l[point[1] + 200 * point[0]] = 25
 
-        plt.figure(1)
+        # cost_map_l[robot_pos[1] + 200 * robot_pos[0]] = 50
+        # cost_map_l[best_pos[1] + 200 * best_pos[0]] = 50
 
-        for point in path:
-            temp_grid[point[1] + 200 * point[0]] = 25
+        # # tell imshow about color map so that only set colors are used
+        # plt.imshow(np.reshape(cost_map_l, (200, 200)), interpolation = 'nearest')
 
-        temp_grid[robot_pos[1] + 200 * robot_pos[0]] = 50
-        temp_grid[best_pos[1] + 200 * best_pos[0]] = 50
+        # plt.draw()
+        # plt.pause(0.00000000001)
 
-        # tell imshow about color map so that only set colors are used
-        plt.imshow(np.reshape(temp_grid, (200, 200)),interpolation='nearest',
-                            cmap = cmap,norm=norm)
-
-        plt.draw()
-        plt.pause(0.00000000001)
-        
     else:
         # Set the path failed flag so we can fully replan
         path_failed = True
@@ -194,6 +186,17 @@ def make_map(c_space):
         # print(str(c_space.info.width) + " x " + str(c_space.info.height))
         # path_msg.data = data
         # path_pub.publish(path_msg)
+
+        # plt.figure(1)
+
+        # cost_map_l[robot_pos[1] + 200 * robot_pos[0]] = 50
+        # cost_map_l[best_pos[1] + 200 * best_pos[0]] = 50
+
+        # # tell imshow about color map so that only set colors are used
+        # plt.imshow(np.reshape(cost_map_l, (200, 200)), interpolation = 'nearest')
+
+        # plt.draw()
+        # plt.pause(0.00000000001)
 
 
 def mt_dstar_node():
@@ -211,8 +214,8 @@ def mt_dstar_node():
     # Make a timer to publish cnew paths
     timer = rospy.Timer(rospy.Duration(secs=0.1), make_map, oneshot=False)
 
-    plt.ion()
-    plt.show()
+    # plt.ion()
+    # plt.show()
 
     # Wait for topic updates
     rospy.spin()
