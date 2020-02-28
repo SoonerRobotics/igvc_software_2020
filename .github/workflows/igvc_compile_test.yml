@@ -6,6 +6,7 @@ on:
     - master
     types:
     - opened
+    - synchronize
   pull_request_review:
     types: [submitted]
 
