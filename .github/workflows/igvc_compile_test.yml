@@ -1,12 +1,13 @@
 name: IGVC Compile Test
 
 on:
-  pull_request:
-    branches:
-    - master
+  pull_request_review:
+    types: [submitted]
 
 jobs:
   test:
+    if: github.event.review.state == 'APPROVED' && github.base_ref == 'master'
+    
     runs-on: ubuntu-latest
 
     steps:
