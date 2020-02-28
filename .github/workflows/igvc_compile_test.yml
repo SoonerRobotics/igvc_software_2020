@@ -1,12 +1,17 @@
 name: IGVC Compile Test
 
 on:
+  pull_request:
+    branches:
+    - master
+    types:
+    - opened
   pull_request_review:
     types: [submitted]
 
 jobs:
   test:
-    if: github.event.review.state == 'APPROVED' && github.base_ref == 'master'
+    if: github.event_name == 'pull_request_review' && github.event.review.state == 'APPROVED' && github.base_ref == 'master' && 
     
     runs-on: ubuntu-latest
 
@@ -16,3 +21,11 @@ jobs:
       - name: Build docker image
         run: docker build . --file Dockerfile
 
+  fail_otherwise:
+    if: github.event_name == 'pull_request'
+    
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Try to fail
+        run: exit 1
