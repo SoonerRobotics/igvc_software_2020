@@ -237,7 +237,7 @@ def mt_dstar_node():
     rospy.Subscriber("/igvc_ekf/filter_output", EKFState, ekf_callback)
 
     # Make a timer to publish cnew paths
-    timer = rospy.Timer(rospy.Duration(secs=1), make_map, oneshot=False)
+    timer = rospy.Timer(rospy.Duration(secs=0.5), make_map, oneshot=False)
 
     if SHOW_PLOTS:
         plt.ion()

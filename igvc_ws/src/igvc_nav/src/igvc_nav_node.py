@@ -43,19 +43,21 @@ def timer_callback(event):
     if pos is None or heading is None:
         return
 
+    cur_pos = (pos[0], pos[1])
+
     lookahead = None
     radius = 0.3 # Start with a radius of 0.1 meters
 
-    while lookahead is None and radius <= 2: # Look until we hit 2 meters max
-        lookahead = pp.get_lookahead_point(pos[0], pos[1], radius)
-        radius *= 1.25
+    while lookahead is None and radius <= 4: # Look until we hit 2 meters max
+        lookahead = pp.get_lookahead_point(cur_pos[0], cur_pos[1], radius)
+        radius *= 1.2
     
     if SHOW_PLOTS:
         plt.figure(2)
         plt.clf()
         plt.xlim([-10, 10])
         plt.ylim([-10, 10])
-        plt.plot(pos[0], pos[1], 's', markersize=16)
+        plt.plot(cur_pos[0], cur_pos[1], 's', markersize=16)
 
         for point in pp.path:
             plt.plot(point[0], point[1], '.', markersize=8)
@@ -65,12 +67,12 @@ def timer_callback(event):
         if SHOW_PLOTS:
             plt.plot(lookahead[0], lookahead[1], 'x', markersize=16)
 
-        heading_to_la = math.degrees(math.atan2(pos[1] - lookahead[1], lookahead[0] - pos[0]))
+        heading_to_la = math.degrees(math.atan2(lookahead[1] - cur_pos[1], lookahead[0] - cur_pos[0]))
         if heading_to_la < 0:
             heading_to_la += 360
 
-        # print('my x: ' + str(round(pos[0], 2)))
-        # print('my y: ' + str(round(pos[1], 2)))
+        # print('my x: ' + str(round(cur_pos[0], 2)))
+        # print('my y: ' + str(round(cur_pos[1], 2)))
 
         # print('loc x: ' + str(round(lookahead[0], 2)))
         # print('loc y: ' + str(round(lookahead[1], 2)))
@@ -88,8 +90,8 @@ def timer_callback(event):
         percent_bad = delta/180
 
         motor_pkt = motors()
-        motor_pkt.left = 0.7 * (1 - abs(percent_bad) / 2) + 0.2 * percent_bad
-        motor_pkt.right = 0.7 * (1 - abs(percent_bad) / 2) - 0.2 * percent_bad
+        motor_pkt.left = 1.0 * (1 - abs(percent_bad))**5 - 0.6 * percent_bad
+        motor_pkt.right = 1.0 * (1 - abs(percent_bad))**5 + 0.6 * percent_bad
         
         publy.publish(motor_pkt)
 
