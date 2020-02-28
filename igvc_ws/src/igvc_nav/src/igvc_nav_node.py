@@ -10,6 +10,8 @@ from igvc_msgs.msg import motors, ekf_state
 import matplotlib as mpl
 from matplotlib import pyplot as plt
 
+SHOW_PLOTS = False
+
 pos = None
 heading = None
 publy = rospy.Publisher('/igvc/motors_raw', motors, queue_size=1)
@@ -42,24 +44,26 @@ def timer_callback(event):
         return
 
     lookahead = None
-    radius = 0.1 # Start with a radius of 0.1 meters
+    radius = 0.3 # Start with a radius of 0.1 meters
 
     while lookahead is None and radius <= 2: # Look until we hit 2 meters max
         lookahead = pp.get_lookahead_point(pos[0], pos[1], radius)
         radius *= 1.25
     
-    plt.figure(2)
-    plt.clf()
-    plt.xlim([-10, 10])
-    plt.ylim([-10, 10])
-    plt.plot(pos[0], pos[1], 's', markersize=16)
+    if SHOW_PLOTS:
+        plt.figure(2)
+        plt.clf()
+        plt.xlim([-10, 10])
+        plt.ylim([-10, 10])
+        plt.plot(pos[0], pos[1], 's', markersize=16)
 
-    for point in pp.path:
-        plt.plot(point[0], point[1], '.', markersize=8)
+        for point in pp.path:
+            plt.plot(point[0], point[1], '.', markersize=8)
 
     if lookahead is not None:
 
-        plt.plot(lookahead[0], lookahead[1], 'x', markersize=16)
+        if SHOW_PLOTS:
+            plt.plot(lookahead[0], lookahead[1], 'x', markersize=16)
 
         heading_to_la = math.degrees(math.atan2(pos[1] - lookahead[1], lookahead[0] - pos[0]))
         if heading_to_la < 0:
@@ -84,13 +88,15 @@ def timer_callback(event):
         percent_bad = delta/180
 
         motor_pkt = motors()
-        motor_pkt.left = 0.7 * (1 - abs(percent_bad)) + 0.3 * percent_bad
-        motor_pkt.right = 0.7 * (1 - abs(percent_bad)) - 0.3 * percent_bad
+        motor_pkt.left = 0.7 * (1 - abs(percent_bad) / 2) + 0.2 * percent_bad
+        motor_pkt.right = 0.7 * (1 - abs(percent_bad) / 2) - 0.2 * percent_bad
         
         publy.publish(motor_pkt)
 
-    plt.draw()
-    plt.pause(0.00000000001)
+
+    if SHOW_PLOTS:
+        plt.draw()
+        plt.pause(0.00000000001)
 
 
 def nav():
@@ -99,10 +105,11 @@ def nav():
     rospy.Subscriber("/igvc_ekf/filter_output", ekf_state, ekf_update)
     rospy.Subscriber("/igvc/global_path", Path, global_path_update)
     
-    rospy.Timer(rospy.Duration(0.03), timer_callback)
+    rospy.Timer(rospy.Duration(0.05), timer_callback)
 
-    plt.ion()
-    plt.show()
+    if SHOW_PLOTS:
+        plt.ion()
+        plt.show()
 
     rospy.spin()
 
