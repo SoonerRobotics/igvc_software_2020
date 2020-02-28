@@ -6,7 +6,7 @@ on:
 
 jobs:
   test:
-    if: github.event.review.state == 'APPROVED' && github.base.ref == 'master'
+    if: github.event.review.state == 'APPROVED' && github.event.base.ref == 'master'
     
     runs-on: ubuntu-latest
 
