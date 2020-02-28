@@ -5,7 +5,7 @@ import math
 from std_msgs.msg import String, Header
 from geometry_msgs.msg import PoseStamped, Pose, Point, Quaternion, Transform, TransformStamped, Vector3
 from nav_msgs.msg import OccupancyGrid, Path, MapMetaData
-from igvc_msgs.msg import motors, ekf_state
+from igvc_msgs.msg import motors, EKFState
 from igvc_msgs.srv import EKFService
 import copy
 import numpy as np
@@ -39,7 +39,7 @@ path_seq = 0
 cost_map = None
 
 # Latest EKF update
-curEKF = None
+curEKF = EKFState()
 
 # Best position to head to on the map (D* goal pos)
 best_pos = (0,0)
@@ -110,13 +110,13 @@ def c_space_callback(c_space):
         
         depth += 1
 
-    map_reference = (curEKF.x_k[3], curEKF.x_k[4], curEKF.x_k[5])
+    map_reference = (curEKF.x, curEKF.y, curEKF.yaw)
     cost_map = temp_cost_map
     best_pos = temp_best_pos
     map_init = False
 
 def make_map(c_space):
-    global planner, map_init, path_failed, prev_state, path_seq, grid_data
+    global planner, map_init, path_failed, prev_state, path_seq
 
     if cost_map is None or curEKF is None:
         return
@@ -124,7 +124,7 @@ def make_map(c_space):
     # Reset the path
     path = None
 
-    robot_pos = (100 - int((curEKF.x_k[3] - map_reference[0]) / GRID_SIZE), 100 - int((curEKF.x_k[4] - map_reference[1]) / GRID_SIZE))
+    robot_pos = (100 - int((curEKF.x - map_reference[0]) / GRID_SIZE), 100 - int((curEKF.y - map_reference[1]) / GRID_SIZE))
 
     # MOVING TARGET D*LITE
     # If this is the first time receiving a map, or if the path failed to be made last time (for robustness),
@@ -137,13 +137,14 @@ def make_map(c_space):
         map_init = True
     # Otherwise, replan the path
     else:
+
         # Transform the map to account for heading changes
-        hdg = curEKF.x_k[5]
+        hdg = curEKF.yaw
         #TODO: rotate map to 0 degree heading
 
         # Calculate the map shift based on the change in EKF state
-        map_shift = (int(curEKF.x_k[3] / GRID_SIZE) - prev_state[0], int(curEKF.x_k[4] / GRID_SIZE) - prev_state[1])
-        prev_state = (int(curEKF.x_k[3] / GRID_SIZE), int(curEKF.x_k[4] / GRID_SIZE))
+        map_shift = (int(curEKF.x / GRID_SIZE) - prev_state[0], int(curEKF.y / GRID_SIZE) - prev_state[1])
+        prev_state = (int(curEKF.x / GRID_SIZE), int(curEKF.y / GRID_SIZE))
 
         # Request the planner replan the path
         path = planner.replan(robot_pos, best_pos, cost_map) #, map_shift) # TODO: add in shifting
@@ -233,7 +234,7 @@ def mt_dstar_node():
     # Wait for the EKF to start advertising its service
     rospy.wait_for_service('/igvc_ekf/get_robot_state')
 
-    rospy.Subscriber("/igvc_ekf/filter_output", ekf_state, ekf_callback)
+    rospy.Subscriber("/igvc_ekf/filter_output", EKFState, ekf_callback)
 
     # Make a timer to publish cnew paths
     timer = rospy.Timer(rospy.Duration(secs=1), make_map, oneshot=False)

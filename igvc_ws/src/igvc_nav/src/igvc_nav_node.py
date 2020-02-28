@@ -4,7 +4,7 @@ import math
 import tf
 from pure_pursuit import PurePursuit
 from nav_msgs.msg import Path, Odometry
-from igvc_msgs.msg import motors, ekf_state
+from igvc_msgs.msg import motors, EKFState
 
 #temps
 import matplotlib as mpl
@@ -32,8 +32,8 @@ def ekf_update(data):
     #     orientation.w)
     # heading = math.degrees(tf.transformations.euler_from_quaternion(quaternion)[2])
 
-    pos = (data.x_k[3], data.x_k[4])
-    heading = 360 - math.degrees(data.x_k[5])
+    pos = (data.x, data.y)
+    heading = 360 - math.degrees(data.global_heading)
 
 def global_path_update(data):
     points = [x.pose.position for x in data.poses] # Get points from Path
@@ -102,9 +102,9 @@ def timer_callback(event):
 def nav():
     rospy.init_node('nav_node', anonymous=True)
 
-    rospy.Subscriber("/igvc_ekf/filter_output", ekf_state, ekf_update)
+    rospy.Subscriber("/igvc_ekf/filter_output", EKFState, ekf_update)
     rospy.Subscriber("/igvc/global_path", Path, global_path_update)
-    
+
     rospy.Timer(rospy.Duration(0.05), timer_callback)
 
     if SHOW_PLOTS:

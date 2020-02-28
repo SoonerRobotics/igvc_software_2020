@@ -26,6 +26,10 @@ repositories:
         type: git
         url: https://github.com/wjwwood/serial.git
         version: master
+    ../igvc_ws/src/deps/libfreenect:
+        type: git
+        url: https://github.com/OpenKinect/libfreenect.git
+        version: master
     ../igvc_ws/src/deps/navigation:
         type: git
         url: https://github.com/ros-planning/navigation.git
