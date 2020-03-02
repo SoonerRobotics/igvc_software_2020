@@ -1,9 +1,9 @@
-name: IGVC Compile Test
+name: IGVC Weekly Compile Test
 
 on:
-  pull_request:
-    branches:
-    - master
+  schedule:
+    # Run every Monday at 8:00 AM Central Time
+    - cron:  '0 14 * * 1'
 
 jobs:
   test:
