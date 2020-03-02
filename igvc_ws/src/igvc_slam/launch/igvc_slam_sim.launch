@@ -10,6 +10,6 @@
     <include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch" />
 
     <!-- Run RViz -->
-    <node type="rviz" name="rviz" pkg="rviz" />
+    <!-- <node type="rviz" name="rviz" pkg="rviz" /> -->
 
 </launch>

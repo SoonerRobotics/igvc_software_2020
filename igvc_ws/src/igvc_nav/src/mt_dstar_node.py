@@ -10,14 +10,11 @@ from igvc_msgs.srv import EKFService
 import copy
 import numpy as np
 from path_planner.mt_dstar_lite import mt_dstar_lite
+from utilities.dstar_viewer import draw_dstar, setup_pyplot
 
-# plots
-import matplotlib as mpl
-from matplotlib import pyplot as plt
-SHOW_PLOTS = False
+SHOW_PLOTS = True
 
 motor_pub = rospy.Publisher("/igvc/motors_raw", motors, queue_size=10)
-#path_pub = rospy.Publisher("/igvc_nav/path_map", OccupancyGrid, queue_size=10)
 global_path_pub = rospy.Publisher("/igvc/global_path", Path, queue_size=1)
 
 # Moving Target D* Lite
@@ -30,7 +27,7 @@ map_reference = (0, 0)
 
 # Localization tracking
 prev_state = (0, 0)  # x, y
-GRID_SIZE = 0.1      # Map block size in meters #TODO: the grid size should be 0.1 I think
+GRID_SIZE = 0.1      # Map block size in meters
 
 # Path tracking
 path_seq = 0
@@ -47,17 +44,6 @@ best_pos = (0,0)
 def ekf_callback(data):
     global curEKF
     curEKF = data
-
-def pose_stamped_from_position(x, y):
-    pose_stamped = PoseStamped()
-    pose_stamped.pose = Pose()
-
-    point = Point()
-    point.x = x
-    point.y = y
-    pose_stamped.pose.position = point
-
-    return pose_stamped
 
 def c_space_callback(c_space):
     global cost_map, map_reference, map_init, best_pos
@@ -82,7 +68,9 @@ def c_space_callback(c_space):
             else:
                 temp_cost_map[(row * 200) + col] = 100
 
-    # Breath-first look for good points :)
+    # Breath-first look for good points
+    # This allows us to find a point within the range of obstacles by not
+    # exploring over obstacles.
     frontier = set()
     frontier.add((100,100))
     explored = set()
@@ -115,6 +103,29 @@ def c_space_callback(c_space):
     best_pos = temp_best_pos
     map_init = False
 
+def path_point_to_global_pose_stamped(robot_pos, pp0, pp1):
+    # Local path
+    x = (robot_pos[0] - pp0) * GRID_SIZE
+    y = (robot_pos[1] - pp1) * GRID_SIZE
+
+    # Translate to global path
+    dx = map_reference[0]
+    dy = map_reference[1]
+    psi = map_reference[2]
+
+    new_x = x * math.cos(psi) - y * math.sin(psi) + dx
+    new_y = y * math.cos(psi) + x * math.sin(psi) + dy
+
+    pose_stamped = PoseStamped()
+    pose_stamped.pose = Pose()
+
+    point = Point()
+    point.x = new_x
+    point.y = new_y
+    pose_stamped.pose.position = point
+
+    return pose_stamped
+
 def make_map(c_space):
     global planner, map_init, path_failed, prev_state, path_seq
 
@@ -137,7 +148,6 @@ def make_map(c_space):
         map_init = True
     # Otherwise, replan the path
     else:
-
         # Transform the map to account for heading changes
         hdg = curEKF.yaw
         #TODO: rotate map to 0 degree heading
@@ -149,56 +159,21 @@ def make_map(c_space):
         # Request the planner replan the path
         path = planner.replan(robot_pos, best_pos, cost_map) #, map_shift) # TODO: add in shifting
 
-    # print "path:"
-    # print path
-
     if path is not None:
         global_path = Path()
-        local_path = Path()
         
         header = Header()
         header.seq = path_seq
         header.stamp = rospy.Time.now()
         header.frame_id = "base_link"
 
-        global_path.header = header
-        local_path.header = header
-
         path_seq += 1
 
-        def path_point_to_global(pp0, pp1):
-            # Local path
-            x = (robot_pos[0] - pp0) * GRID_SIZE
-            y = (robot_pos[1] - pp1) * GRID_SIZE
-
-            # Translate to global path
-            dx = map_reference[0]
-            dy = map_reference[1]
-            psi = map_reference[2]
-
-            new_x = x * math.cos(psi) - y * math.sin(psi) + dx
-            new_y = y * math.cos(psi) + x * math.sin(psi) + dy
-
-            return pose_stamped_from_position(new_x, new_y)
-
-        global_path.poses = [path_point_to_global(path_point[0], path_point[1]) for path_point in path]
+        global_path.header = header
+        global_path.poses = [path_point_to_global_pose_stamped(robot_pos, path_point[0], path_point[1]) for path_point in path]
         global_path.poses.reverse() # reverse path becuz its backwards lol
 
         global_path_pub.publish(global_path)
-
-        if SHOW_PLOTS:
-            plt.figure(1)
-            plt.clf()
-            plt.imshow(np.reshape(cost_map, (200, 200)), interpolation = 'nearest')
-
-            for point in path:
-                plt.plot(point[1], point[0], '.', markersize=8, color="red")
-
-            plt.plot(robot_pos[1], robot_pos[0], '.', markersize=8, color="black")
-            plt.plot(best_pos[1],best_pos[0], '.', markersize=8, color="pink")
-
-            plt.draw()
-            plt.pause(0.00000000001)
 
     else:
         # Set the path failed flag so we can fully replan
@@ -211,17 +186,8 @@ def make_map(c_space):
         # path_msg.data = data
         # path_pub.publish(path_msg)
 
-        if SHOW_PLOTS:
-            plt.figure(1)
-
-            plt.clf()
-            plt.imshow(np.reshape(cost_map, (200, 200)), interpolation = 'nearest')
-
-            plt.plot(robot_pos[1], robot_pos[0], '.', markersize=8, color="black")
-            plt.plot(best_pos[1],best_pos[0], '.', markersize=8, color="pink")
-
-            plt.draw()
-            plt.pause(0.00000000001)
+    if SHOW_PLOTS:
+        draw_dstar(robot_pos, best_pos, cost_map, path, fig_num=2)
 
 
 def mt_dstar_node():
@@ -230,18 +196,13 @@ def mt_dstar_node():
 
     # Subscribe to necessary topics
     rospy.Subscriber("/igvc_slam/local_config_space", OccupancyGrid, c_space_callback, queue_size=1)  # Mapping
-
-    # Wait for the EKF to start advertising its service
-    rospy.wait_for_service('/igvc_ekf/get_robot_state')
-
     rospy.Subscriber("/igvc_ekf/filter_output", EKFState, ekf_callback)
 
-    # Make a timer to publish cnew paths
+    # Make a timer to publish new paths
     timer = rospy.Timer(rospy.Duration(secs=0.5), make_map, oneshot=False)
 
     if SHOW_PLOTS:
-        plt.ion()
-        plt.show()
+        setup_pyplot()
 
     # Wait for topic updates
     rospy.spin()
