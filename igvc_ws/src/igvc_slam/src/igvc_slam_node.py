@@ -7,7 +7,7 @@ import rospy
 from nav_msgs.msg import OccupancyGrid, MapMetaData
 
 # Publishers
-config_pub = rospy.Publisher("/igvc_slam/config_space", OccupancyGrid, queue_size=1)
+config_pub = rospy.Publisher("/igvc_slam/local_config_space", OccupancyGrid, queue_size=1)
 
 # Configuration space map
 metadata = MapMetaData()
@@ -35,13 +35,17 @@ def lidar_callback(data):
     for x in range(200):
         for y in range(200):
             if data.data[x + y * 200] > 0:
-                for x_i in range(-5,6):
-                    for y_i in range(-5,6):
+                for x_i in range(-7,7):
+                    for y_i in range(-7,7):
                         dist = (x_i)**2 + (y_i)**2
-                        new_x = 199 - (x + x_i)
-                        new_y = 199 - (y + y_i)
-                        if 0 <= new_x < 200 and 0 <= new_y < 200 and dist <= 25:
-                            lidar_hidden_layer[(x + x_i) + 200 * (y + y_i)] = 100
+                        index = ((x + x_i)) + 200 * (y + y_i)
+
+                        if 0 <= (x + x_i) < 200 and 0 <= (y + y_i) < 200 and dist <= 9 and lidar_hidden_layer[index] <= 100:
+                            # obstacle expansion
+                            lidar_hidden_layer[index] = 100
+                        elif 0 <= (x + x_i) < 200 and 0 <= (y + y_i) < 200 and dist <= 49 and lidar_hidden_layer[index] <= dist * (-100/40) + (245/2):
+                            # linearly decay
+                            lidar_hidden_layer[index] = dist * (-100/40) + (245/2)
 
     # After updating the hidden layer, swap the hidden layer to the foreground to apply the configuration space
     tmp_cfg_space = lidar_config_data
@@ -76,7 +80,7 @@ def igvc_slam_node():
     map_sub = rospy.Subscriber("/igvc_vision/map", OccupancyGrid, lidar_callback, queue_size=10)
 
     # Make a timer to publish configuration spaces periodically
-    timer = rospy.Timer(rospy.Duration(secs=1), config_space_callback, oneshot=False)
+    timer = rospy.Timer(rospy.Duration(secs=0.2), config_space_callback, oneshot=False)
 
     # Wait for topic updates
     rospy.spin()
