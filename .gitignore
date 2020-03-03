@@ -57,3 +57,5 @@ CATKIN_IGNORE
 /igvc_ws/src/deps/**
 /igvc_ws/src/igvc_ekf/data/*.csv
 /igvc_ws/src/igvc_nav/src/output/visualizations/*.html
+*.avi
+igvc_ws/src/igvc_vision/LaneDetection/videoplayback.mp4
