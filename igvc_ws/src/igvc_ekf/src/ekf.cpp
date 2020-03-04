@@ -3,16 +3,16 @@
 
 EKF::EKF()
 {
-    // set the covariance matrix to 0.8 identically
+    // set the covariance matrix to the identity matrix
     this->P_k.setIdentity(11, 11);
-    this->P_k *= 0.9;
+    this->P_k *= 1;
 
     // Define the process noise
     this->Q_k.setIdentity(11, 11);
-    this->Q_k *= 0.4;
+    this->Q_k *= 0.6;
 
     // Define the measurement noise
-    this->R_k.setIdentity(9, 9) * 0.7;
+    this->R_k.setIdentity(9, 9);
     this->R_k(0, 0) = 3.395864;
     this->R_k(1, 1) = 4.571665;
 
@@ -100,10 +100,10 @@ double EKF::get_convergence()
 void EKF::calculate_dynamics(Eigen::VectorXd u_k, double dt)
 {
     // Velocity calculations
-    double velocity = 0.5 * WHEEL_RADIUS * (u_k(0) + u_k(1));
+    double velocity = 0.5 * WHEEL_RADIUS * (x_k(8) + x_k(9));
     double x_dot    = velocity * cos(x_k(5));
     double y_dot    = velocity * sin(x_k(5));
-    double psi_dot  = (WHEEL_RADIUS / WHEELBASE_LEN) * (u_k(0) - u_k(1));
+    double psi_dot  = (WHEEL_RADIUS / WHEELBASE_LEN) * (x_k(8) - x_k(9));
 
     // Position Calculations
     double x     = x_k(3) + x_dot * dt;

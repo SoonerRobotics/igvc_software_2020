@@ -14,6 +14,7 @@
 #include "igvc_msgs/imuodom.h"
 #include "igvc_msgs/velocity.h"
 #include "igvc_msgs/EKFService.h"
+#include "igvc_msgs/motors.h"
 
 // Init the EKF
 EKF ekf;
@@ -142,8 +143,8 @@ void updateVelocity(const igvc_msgs::velocity::ConstPtr& vel_msg)
     z(8) = vel_msg->rightVel;
 
     // Update control through hacks
-    u(0) = vel_msg->leftVel;
-    u(1) = vel_msg->rightVel;
+    //u(0) = vel_msg->leftVel;
+    //u(1) = vel_msg->rightVel;
 
     // Show that the velocity has been updated
     data_init |= (1 << 1);
@@ -178,7 +179,12 @@ void updateIMU(const igvc_msgs::imuodom::ConstPtr& imu_msg)
     accel_file << data;
 }
 
-
+void updateControlSignal(const igvc_msgs::motors::ConstPtr& motors)
+{
+    // HACK: convert simulator linear velocity to angular velocity
+    u(0) = motors->left / WHEEL_RADIUS;
+    u(1) = motors->right / WHEEL_RADIUS;
+}
 
 
 int main(int argc, char** argv)
@@ -192,9 +198,10 @@ int main(int argc, char** argv)
     z.setZero(9);
 
     // Initialize the subscribers
-    ros::Subscriber imu_sub = ekf_node.subscribe(ekf_node.resolveName("/igvc/imu"), 10, &updateIMU);
-    ros::Subscriber vel_sub = ekf_node.subscribe(ekf_node.resolveName("/igvc/velocity"), 10, &updateVelocity);
-    ros::Subscriber gps_sub = ekf_node.subscribe(ekf_node.resolveName("/igvc/gps"), 10, &updateGPS);
+    ros::Subscriber imu_sub = ekf_node.subscribe(ekf_node.resolveName("/igvc/imu"), 1, &updateIMU);
+    ros::Subscriber vel_sub = ekf_node.subscribe(ekf_node.resolveName("/igvc/velocity"), 1, &updateVelocity);
+    ros::Subscriber gps_sub = ekf_node.subscribe(ekf_node.resolveName("/igvc/gps"), 1, &updateGPS);
+    ros::Subscriber ctrl_sub = ekf_node.subscribe(ekf_node.resolveName("/igvc/motors_raw"), 1, &updateControlSignal);
 
     // Initialize logging
     std::string path = ros::package::getPath("igvc_ekf");
