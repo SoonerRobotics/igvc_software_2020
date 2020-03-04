@@ -12,13 +12,13 @@ from cv_bridge import CvBridge, CvBridgeError
 from LaneDetection.LineDetection import process_frame
 
 bridge = CvBridge()
-image_pub = rospy.Publisher("/igvc/road_vision/raw", Image, queue_size=1)
+image_pub = rospy.Publisher("/igvc_vision/road_vision/raw", Image, queue_size=1)
 
 frame_num = 0
 def camera_callback(data):
     global frame_num
     frame_num += 1
-    if frame_num % 5 == 0:
+    if frame_num % 2 == 0:
         np_arr = np.fromstring(data.data, np.uint8)
         cv_image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 

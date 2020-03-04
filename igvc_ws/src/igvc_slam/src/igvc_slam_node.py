@@ -3,7 +3,10 @@
 import copy
 import numpy as np
 import rospy
+import cv2
+from cv_bridge import CvBridge, CvBridgeError
 
+from sensor_msgs.msg import Image
 from nav_msgs.msg import OccupancyGrid, MapMetaData
 
 # Publishers
@@ -15,9 +18,20 @@ lidar_config_data = [0] * (200 * 200)
 lanes_camera_config_data = [0] * (200 * 200)
 lidar_hidden_layer = [0] * (200 * 200)
 
+last_lane_map = [0] * (200 * 200)
+
 # Initializiation
 lidar_init = False
 
+# Image to cv2
+bridge = CvBridge()
+
+def lane_callback(data):
+    global last_lane_map, print_once
+    img = bridge.imgmsg_to_cv2(data, desired_encoding="passthrough")
+
+    yeet = cv2.resize(img, (200, 200))
+    last_lane_map = list(yeet.flatten())
 
 def lidar_callback(data):
     # use the global vars
@@ -34,13 +48,13 @@ def lidar_callback(data):
     # Update the hidden layer before applying the new map to the current configuration space
     for x in range(200):
         for y in range(200):
-            if data.data[x + y * 200] > 0:
+            if data.data[x + y * 200] > 0 or last_lane_map[x + y * 200] > 0:
                 for x_i in range(-7,7):
                     for y_i in range(-7,7):
                         dist = (x_i)**2 + (y_i)**2
                         index = ((x + x_i)) + 200 * (y + y_i)
 
-                        if 0 <= (x + x_i) < 200 and 0 <= (y + y_i) < 200 and dist <= 9 and lidar_hidden_layer[index] <= 100:
+                        if 0 <= (x + x_i) < 200 and 0 <= (y + y_i) < 200 and dist <= 36 and lidar_hidden_layer[index] <= 100:
                             # obstacle expansion
                             lidar_hidden_layer[index] = 100
                         elif 0 <= (x + x_i) < 200 and 0 <= (y + y_i) < 200 and dist <= 49 and lidar_hidden_layer[index] <= dist * (-100/40) + (245/2):
@@ -77,10 +91,11 @@ def igvc_slam_node():
     rospy.init_node("igvc_slam_node")
 
     # Subscribe to necessary topics
-    map_sub = rospy.Subscriber("/igvc_vision/map", OccupancyGrid, lidar_callback, queue_size=10)
+    map_sub = rospy.Subscriber("/igvc_vision/map", OccupancyGrid, lidar_callback, queue_size=1)
+    lane_sub = rospy.Subscriber("/igvc_vision/road_vision/raw", Image, lane_callback, queue_size=1)
 
     # Make a timer to publish configuration spaces periodically
-    timer = rospy.Timer(rospy.Duration(secs=0.2), config_space_callback, oneshot=False)
+    timer = rospy.Timer(rospy.Duration(secs=0.1), config_space_callback, oneshot=False)
 
     # Wait for topic updates
     rospy.spin()

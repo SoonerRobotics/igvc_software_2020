@@ -5,6 +5,7 @@
     <!-- Run required nodes-->
     <node name="igvc_slam_node" pkg="igvc_slam" type="igvc_slam_node.py" output="screen"/>
     <node name="lidar_node" pkg="igvc_vision" type="lidar_node"/>
+    <node name="lane_finder" pkg="igvc_vision" type="lane_finder.py" output="screen"/>
 
     <!-- Set up the bridge to the simulator -->
     <include file="$(find rosbridge_server)/launch/rosbridge_websocket.launch" />
