@@ -1,0 +1,4 @@
+<launch>
+    <!-- enable when real robot <node name="kinect_node" pkg="igvc_vision" type="kinect_node.py" output="screen"/> -->
+    <node name="lane_finder" pkg="igvc_vision" type="lane_finder.py" output="screen"/>
+</launch>
