@@ -7,7 +7,8 @@ from nav_msgs.msg import Path, Odometry
 from igvc_msgs.msg import motors, EKFState
 from utilities.pp_viwer import setup_pyplot, draw_pp
 
-SHOW_PLOTS = True
+SHOW_PLOTS = False
+WHEEL_RADIUS = 0.127
 
 pos = None
 heading = None
@@ -19,7 +20,7 @@ def ekf_update(ekf_state):
     global pos, heading
 
     pos = (ekf_state.x, ekf_state.y)
-    heading = 360 - math.degrees(ekf_state.global_heading)
+    heading = math.degrees(ekf_state.global_heading)
 
 def global_path_update(data):
     points = [x.pose.position for x in data.poses] # Get points from Path
@@ -37,7 +38,7 @@ def timer_callback(event):
     while lookahead is None and radius <= 3: # Look until we hit 3 meters max
         lookahead = pp.get_lookahead_point(cur_pos[0], cur_pos[1], radius)
         radius *= 1.2
-    
+
     if SHOW_PLOTS:
         draw_pp(cur_pos, lookahead, pp.path)
 
@@ -61,9 +62,9 @@ def timer_callback(event):
         # Add proprtional error for turning.
         # TODO: PID instead of just P
         motor_pkt = motors()
-        motor_pkt.left = forward_speed - 0.4 * error
-        motor_pkt.right = forward_speed + 0.4 * error
-        
+        motor_pkt.left = (forward_speed - 0.4 * error) / WHEEL_RADIUS
+        motor_pkt.right = (forward_speed + 0.4 * error) / WHEEL_RADIUS
+
         publy.publish(motor_pkt)
 
 

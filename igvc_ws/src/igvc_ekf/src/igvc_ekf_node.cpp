@@ -142,10 +142,6 @@ void updateVelocity(const igvc_msgs::velocity::ConstPtr& vel_msg)
     z(7) = vel_msg->leftVel;
     z(8) = vel_msg->rightVel;
 
-    // Update control through hacks
-    //u(0) = vel_msg->leftVel;
-    //u(1) = vel_msg->rightVel;
-
     // Show that the velocity has been updated
     data_init |= (1 << 1);
 
@@ -160,15 +156,17 @@ void updateIMU(const igvc_msgs::imuodom::ConstPtr& imu_msg)
     // Show that the acceleration and heading have been updated
     data_init |= (1 << 2) | (1 << 3);
 
+    double deg_hdg = radiansToDegrees(imu_msg->heading);
+
     if(last_heading < -1000)
     {
-        last_heading = imu_msg->heading;
+        last_heading = deg_hdg;
     }
 
-    z(6) = degreesToRadians(angleDiff(imu_msg->heading, last_heading)) / 0.02;
-    z(5) += degreesToRadians(angleDiff(imu_msg->heading, last_heading)); // Update local heading from change to global heading
-    z(4) = degreesToRadians(imu_msg->heading);                 // Update global heading
-    last_heading = imu_msg->heading;
+    z(6) = degreesToRadians(angleDiff(last_heading, deg_hdg)) / 0.02;
+    z(5) += degreesToRadians(angleDiff(last_heading, deg_hdg)); // Update local heading from change to global heading
+    z(4) = degreesToRadians(deg_hdg);                 // Update global heading
+    last_heading = deg_hdg;
 
     // Update the heading file
     std::string data = std::to_string(z(4)) + ", " + std::to_string(z(5)) + "\n";
@@ -181,9 +179,8 @@ void updateIMU(const igvc_msgs::imuodom::ConstPtr& imu_msg)
 
 void updateControlSignal(const igvc_msgs::motors::ConstPtr& motors)
 {
-    // HACK: convert simulator linear velocity to angular velocity
-    u(0) = motors->left / WHEEL_RADIUS;
-    u(1) = motors->right / WHEEL_RADIUS;
+    u(0) = motors->left;
+    u(1) = motors->right;
 }
 
 

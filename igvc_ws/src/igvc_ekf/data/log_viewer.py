@@ -4,7 +4,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 
 # Read the data files
-ekf_file = pd.read_csv("export.csv", names=['ekf_x', 'ekf_y', 'nan'])
+ekf_file = pd.read_csv("export.csv", names=['id', 'lat', 'lon', 'hdg', 'ekf_x', 'ekf_y', 'yaw', 'nan'])
 ground_truth_file = pd.read_csv("ground_truth.csv", names=['true_x', 'true_y'])
 
 # Set the x,y coordinates

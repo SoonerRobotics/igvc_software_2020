@@ -5,14 +5,14 @@ EKF::EKF()
 {
     // set the covariance matrix to the identity matrix
     this->P_k.setIdentity(11, 11);
-    this->P_k *= 1;
+    this->P_k *= 0.75;
 
     // Define the process noise
     this->Q_k.setIdentity(11, 11);
     this->Q_k *= 0.6;
 
     // Define the measurement noise
-    this->R_k.setIdentity(9, 9);
+    this->R_k.setIdentity(9, 9) * 0.5;
     this->R_k(0, 0) = 3.395864;
     this->R_k(1, 1) = 4.571665;
 
@@ -109,7 +109,7 @@ void EKF::calculate_dynamics(Eigen::VectorXd u_k, double dt)
     double x     = x_k(3) + x_dot * dt;
     double y     = x_k(4) + y_dot * dt;
     double psi   = x_k(5) - psi_dot * dt;
-    double theta = x_k(2) + psi_dot * dt;
+    double theta = x_k(2) - psi_dot * dt;
 
     // GPS calculations
     double lat = x_k(0) + (x_k(6) * dt) * cos(x_k(2)) / EARTH_RADIUS;
@@ -137,21 +137,6 @@ void EKF::calculate_dynamics(Eigen::VectorXd u_k, double dt)
 
 void EKF::linear_dynamics(Eigen::VectorXd u_k, double dt)
 {
-
-/*
-Matrix([
-    [1, 0, -t*v*sin(theta)/6378137, 0, 0, 0, t*cos(theta)/6378137, 0, 0, 0, 0],
-    [t*v*sin(phi)*sin(theta)/(6378137*cos(phi)**2), 1, t*v*cos(theta)/(6378137*cos(phi)), 0, 0, 0, t*sin(theta)/(6378137*cos(phi)), 0, 0, 0, 0],
-    [0, 0, 1, 0, 0, 0, 0, 0, 0.150375939849624*t, -0.150375939849624*t, 0],
-    [0, 0, 0, 1, 0, -t*(0.0635*l + 0.0635*r)*sin(psi), 0, 0, 0.0635*t*cos(psi), 0.0635*t*cos(psi), 0],
-    [0, 0, 0, 0, 1, t*(0.0635*l + 0.0635*r)*cos(psi), 0, 0, 0.0635*t*sin(psi), 0.0635*t*sin(psi), 0],
-    [0, 0, 0, 0, 0, 1, 0, 0, 0.150375939849624*t, -0.150375939849624*t, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0.0635000000000000, 0.0635000000000000, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0.150375939849624, -0.150375939849624, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]])
-*/
     double velocity = x_k(6);
     double left_vel = x_k(8);
     double right_vel = x_k(9);
@@ -177,17 +162,17 @@ Matrix([
     F_k(1, 2) = dt * velocity * cos_theta / (EARTH_RADIUS * cos_phi);
     F_k(1, 6) = dt * sin_theta / (EARTH_RADIUS * cos_phi);
 
-    // heading
-    F_k(2, 8) = (WHEEL_RADIUS / WHEELBASE_LEN) * dt;
-    F_k(2, 9) = -(WHEEL_RADIUS / WHEELBASE_LEN) * dt;
+    // global heading
+    F_k(2, 8) = -(WHEEL_RADIUS / WHEELBASE_LEN) * dt;
+    F_k(2, 9) = (WHEEL_RADIUS / WHEELBASE_LEN) * dt;
 
     // X
-    F_k(3, 5) = -dt * (0.5 * WHEEL_RADIUS * (left_vel + right_vel))* sin_psi;
+    F_k(3, 5) = -dt * (0.5 * WHEEL_RADIUS * (left_vel + right_vel)) * sin_psi;
     F_k(3, 8) = 0.5 * WHEEL_RADIUS * dt * cos_psi;
     F_k(3, 9) = 0.5 * WHEEL_RADIUS * dt * cos_psi;
 
     // Y
-    F_k(4, 5) = dt * (0.5 * WHEEL_RADIUS * (left_vel + right_vel))* cos_psi;
+    F_k(4, 5) = dt * (0.5 * WHEEL_RADIUS * (left_vel + right_vel)) * cos_psi;
     F_k(4, 8) = 0.5 * WHEEL_RADIUS * dt * sin_psi;
     F_k(4, 9) = 0.5 * WHEEL_RADIUS * dt * sin_psi;
 

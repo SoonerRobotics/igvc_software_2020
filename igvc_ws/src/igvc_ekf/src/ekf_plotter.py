@@ -19,18 +19,20 @@ def plot_x(msg):
         plt.figure(1)
         stamp = msg.header.stamp
         time = stamp.secs + stamp.nsecs * 1e-9
-        plt.plot(msg.x, msg.y, '*')
-        plt.axis("equal")
-        plt.draw()
-        plt.pause(0.00000000001)
+        # plt.plot(msg.x, msg.y, '*')
+        # plt.axis("equal")
+        # plt.draw()
+        # plt.pause(0.00000000001)
 
         csv_file = open(pkg_path + "/data/export.csv", "a")
         state_str = ""
-        #state_str += str(counter/10) + "," + str(degrees(msg.latitude)) + "," + str(degrees(msg.longitude)) + ","
-        #state_str += str(msg.global_heading) + ","
+        state_str += str(counter/10) + ","
+        state_str += str(degrees(msg.latitude)) + ","
+        state_str += str(degrees(msg.longitude)) + ","
+        state_str += str(msg.global_heading) + ","
         state_str += str(msg.x) + ","
         state_str += str(msg.y) + ","
-        #state_str += str(msg.yaw) + ","
+        state_str += str(msg.yaw) + ","
         #state_str += str(msg.velocity) + ","
         #state_str += str(msg.yaw_rate) + ","
         #state_str += str(msg.left_angular_vel) + ","
