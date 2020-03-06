@@ -12,7 +12,7 @@ import numpy as np
 from path_planner.mt_dstar_lite import mt_dstar_lite
 from utilities.dstar_viewer import draw_dstar, setup_pyplot
 
-SHOW_PLOTS = True
+SHOW_PLOTS = False
 
 motor_pub = rospy.Publisher("/igvc/motors_raw", motors, queue_size=10)
 global_path_pub = rospy.Publisher("/igvc/global_path", Path, queue_size=1)
@@ -127,6 +127,7 @@ def path_point_to_global_pose_stamped(robot_pos, pp0, pp1):
     return pose_stamped
 
 def make_map(c_space):
+    time_1 = rospy.get_time()
     global planner, map_init, path_failed, prev_state, path_seq
 
     if cost_map is None or curEKF is None:
@@ -188,6 +189,9 @@ def make_map(c_space):
 
     if SHOW_PLOTS:
         draw_dstar(robot_pos, best_pos, cost_map, path, fig_num=2)
+    time_2 = rospy.get_time()
+
+    print("time to make_map", (time_2 - time_1) * 1000)
 
 
 def mt_dstar_node():

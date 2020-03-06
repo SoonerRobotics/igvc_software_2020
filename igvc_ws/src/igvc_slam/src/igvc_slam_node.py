@@ -3,6 +3,7 @@
 import copy
 import numpy as np
 import rospy
+import math
 import cv2
 from cv_bridge import CvBridge, CvBridgeError
 
@@ -14,11 +15,9 @@ config_pub = rospy.Publisher("/igvc_slam/local_config_space", OccupancyGrid, que
 
 # Configuration space map
 metadata = MapMetaData()
-lidar_config_data = [0] * (200 * 200)
-lanes_camera_config_data = [0] * (200 * 200)
-lidar_hidden_layer = [0] * (200 * 200)
 
-last_lane_map = [0] * (200 * 200)
+last_lane_map = None
+last_lidar = None
 
 # Initializiation
 lidar_init = False
@@ -30,59 +29,46 @@ def lane_callback(data):
     global last_lane_map, print_once
     img = bridge.imgmsg_to_cv2(data, desired_encoding="passthrough")
 
-    yeet = cv2.resize(img, (200, 200))
-    last_lane_map = list(yeet.flatten())
+    resized = cv2.resize(img, (200, 130))
+    last_lane_map = resized
 
 def lidar_callback(data):
     # use the global vars
-    global lidar_init, lidar_config_data, lidar_hidden_layer, metadata
-
-    # Reset the hidden layer
-    lidar_hidden_layer = [0] * (200 * 200)
+    global last_lidar, metadata
 
     # HACK: eventually set this to be based on the map size and stuff
     metadata = MapMetaData(map_load_time = data.info.map_load_time, resolution=data.info.resolution,
                             width = data.info.width, height = data.info.height, origin = data.info.origin)
-    lidar_init = True
+
+    last_lidar = data.data
+
+# TODO: currently this whole thing is set to use the most recent map frames from each perception unit (which is fine for now). In the future the sizing will change as the map grows.
+def config_space_callback(event):
+    if last_lane_map is None or last_lidar is None:
+        return
+
+    time_1 = rospy.get_time()
+
+    result = [0] * (200 * 200)
 
     # Update the hidden layer before applying the new map to the current configuration space
     for x in range(200):
         for y in range(200):
-            if data.data[x + y * 200] > 0 or last_lane_map[x + y * 200] > 0:
-                for x_i in range(-7,7):
-                    for y_i in range(-7,7):
-                        dist = (x_i)**2 + (y_i)**2
+            if last_lidar[x + y * 200] > 0 or (y < 100 and last_lane_map[y, x]) > 0:
+                for x_i in range(-6,7):
+                    for y_i in range(-6,7):
                         index = ((x + x_i)) + 200 * (y + y_i)
+                        dist = (x_i)**2 + (y_i)**2
 
-                        if 0 <= (x + x_i) < 200 and 0 <= (y + y_i) < 200 and dist <= 36 and lidar_hidden_layer[index] <= 100:
-                            # obstacle expansion
-                            lidar_hidden_layer[index] = 100
-                        elif 0 <= (x + x_i) < 200 and 0 <= (y + y_i) < 200 and dist <= 49 and lidar_hidden_layer[index] <= dist * (-100/40) + (245/2):
-                            # linearly decay
-                            lidar_hidden_layer[index] = dist * (-100/40) + (245/2)
+                        if 0 <= (x + x_i) < 200 and 0 <= (y + y_i) < 200 and dist <= 49 and result[index] < dist * (-100/49) + 100: 
+                            result[index] = int(dist * (-100/64) + 100)
+    
+    time_2 = rospy.get_time()
+    print("time to config_space_callback", (time_2 - time_1) * 1000)
 
-    # After updating the hidden layer, swap the hidden layer to the foreground to apply the configuration space
-    tmp_cfg_space = lidar_config_data
-    lidar_config_data = lidar_hidden_layer
-    lidar_hidden_layer = tmp_cfg_space
-
-
-def lanes_camera_callback():
-    pass
-
-
-# TODO: currently this whole thing is set to use the most recent map frames from each perception unit (which is fine for now). In the future the sizing will change as the map grows.
-def config_space_callback(event):
-    # Use the global data
-    global lidar_init, lidar_config_data, metadata
-
-    if lidar_init is True:
-        # TODO: Make this add the lidar config space to the camera config space
-        config_space = lidar_config_data
-
-        # Publish the configuration space
-        config_msg = OccupancyGrid(info=metadata, data=config_space)
-        config_pub.publish(config_msg)
+    # Publish the configuration space
+    config_msg = OccupancyGrid(info=metadata, data=result)
+    config_pub.publish(config_msg)
 
 
 

@@ -4,16 +4,18 @@ import math
 class PurePursuit:
 
     def __init__(self):
+        self.queued_path = []
         self.path = []
     
     def add_point(self, x, y):
-        self.path.append((x,y))
+        self.queued_path.append((x,y))
 
     def set_points(self, pts):
-        self.path = pts
+        self.queued_path = pts
 
     def get_lookahead_point(self, x, y, r):
         lookahead = None
+        self.path = self.queued_path
 
         for i in range(len(self.path)-1):
             segStart = self.path[i]

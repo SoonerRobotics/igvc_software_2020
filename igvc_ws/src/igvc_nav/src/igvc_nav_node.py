@@ -7,7 +7,9 @@ from nav_msgs.msg import Path, Odometry
 from igvc_msgs.msg import motors, EKFState
 from utilities.pp_viwer import setup_pyplot, draw_pp
 
-SHOW_PLOTS = True
+SHOW_PLOTS = False
+
+wheel_radius = 0.127
 
 pos = None
 heading = None
@@ -32,7 +34,7 @@ def timer_callback(event):
     cur_pos = (pos[0], pos[1])
 
     lookahead = None
-    radius = 0.3 # Start with a radius of 0.3 meters
+    radius = 0.25 # Start with a radius of 0.3 meters
 
     while lookahead is None and radius <= 3: # Look until we hit 3 meters max
         lookahead = pp.get_lookahead_point(cur_pos[0], cur_pos[1], radius)
@@ -55,14 +57,14 @@ def timer_callback(event):
         error = heading_error/180
 
         # Base forward velocity for both wheels
-        forward_speed = 0.8 * (1 - abs(error))**5
+        forward_speed = 0.9 * (1 - abs(error))**5
 
         # Define wheel linear velocities
         # Add proprtional error for turning.
         # TODO: PID instead of just P
         motor_pkt = motors()
-        motor_pkt.left = forward_speed - 0.4 * error
-        motor_pkt.right = forward_speed + 0.4 * error
+        motor_pkt.left = (forward_speed - 0.5 * error) / wheel_radius
+        motor_pkt.right = (forward_speed + 0.5 * error) / wheel_radius
         
         publy.publish(motor_pkt)
 

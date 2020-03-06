@@ -9,7 +9,7 @@ def process_frame(img):
     rawWidth = 640
     rawHeight = 480
     croppedWidth = 640
-    croppedHeight = 360
+    croppedHeight = 480
 
 
     dim = (rawWidth,rawHeight)
@@ -34,7 +34,7 @@ def process_frame(img):
     h,s,v = cv2.split(img_medianBlur)
     v = cv2.equalizeHist(v)
     img_HSV = cv2.merge((h,s,v))
-    img_HSV = cv2.inRange(img_medianBlur, (20, 20, 80), (100, 80, 220))
+    img_HSV = cv2.inRange(img_medianBlur, (0, 0, 80), (255, 80, 255))
     #filter to remove ramp lip
     kernel_size = 5
     kernel = np.ones((kernel_size, kernel_size), np.uint8)
@@ -44,48 +44,48 @@ def process_frame(img):
 
         #top down view
     img_topDown = camera_info.convertToFlat(img_gaussianBlur)
-    #cv2.imshow("top Down", img_topDown)
+    # #cv2.imshow("top Down", img_topDown)
         
-    im2, contours, hierarchy = cv2.findContours(img_topDown, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    min_width = 0
-    max_width = 1000000
-    min_perimeter = 1
-    min_area = 1000
-    min_height = 0
-    max_height = 1000000
-    solidity = [21,100]
-    max_vertex_count = 1000000
-    min_vertex_count = 0
-    min_ratio = 0
-    max_ratio = 10000
-    output = []
+    # im2, contours, hierarchy = cv2.findContours(img_topDown, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    # min_width = 0
+    # max_width = 1000000
+    # min_perimeter = 1
+    # min_area = 1000
+    # min_height = 0
+    # max_height = 1000000
+    # solidity = [21,100]
+    # max_vertex_count = 1000000
+    # min_vertex_count = 0
+    # min_ratio = 0
+    # max_ratio = 10000
+    # output = []
         
-    for n in contours:
-        x, y, w, h = cv2.boundingRect(n)
-        if (w < min_width or w > max_width):
-            continue
-        if (h < min_height or h > max_height):
-            continue
-        area = cv2.contourArea(n)
-        if (area < min_area):
-            continue
-        if (cv2.arcLength(n, True) < min_perimeter):
-            continue
-        hull = cv2.convexHull(n)
-        solid = 100 * area / cv2.contourArea(hull)
-        if (solid < solidity[0] or solid > solidity[1]):
-            continue
-        if (len(n) < min_vertex_count or len(n) > max_vertex_count):
-            continue
-        ratio = (float)(w) / h
-        if (ratio < min_ratio or ratio > max_ratio):
-            continue
-        output.append(n)
+    # for n in contours:
+    #     x, y, w, h = cv2.boundingRect(n)
+    #     if (w < min_width or w > max_width):
+    #         continue
+    #     if (h < min_height or h > max_height):
+    #         continue
+    #     area = cv2.contourArea(n)
+    #     if (area < min_area):
+    #         continue
+    #     if (cv2.arcLength(n, True) < min_perimeter):
+    #         continue
+    #     hull = cv2.convexHull(n)
+    #     solid = 100 * area / cv2.contourArea(hull)
+    #     if (solid < solidity[0] or solid > solidity[1]):
+    #         continue
+    #     if (len(n) < min_vertex_count or len(n) > max_vertex_count):
+    #         continue
+    #     ratio = (float)(w) / h
+    #     if (ratio < min_ratio or ratio > max_ratio):
+    #         continue
+    #     output.append(n)
         
-    #print contours
-    img = cv2.drawContours(img_topDown, output, -1, (0,255,0), 3)
-        #out.write(img)
-    return img
+    # #print contours
+    # img = cv2.drawContours(img_topDown, output, -1, (0,255,0), 3)
+    #     #out.write(img)
+    return img_topDown
                           
                                 # press q to quit
        

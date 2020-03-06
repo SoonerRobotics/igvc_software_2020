@@ -91,7 +91,9 @@ class mt_dstar_lite:
 
     def compute_cost_minimal_path(self):
         """ Finds the best path from the start state to the goal state """
-        while (self.open_list.top_key() < self.calculate_key(self.goal_node)) or (self.goal_node.rhs > self.goal_node.G):
+        iters = 0
+        while iters < 1000 and ((self.open_list.top_key() < self.calculate_key(self.goal_node)) or (self.goal_node.rhs > self.goal_node.G)):
+            iters+=1
             # Get the highest priority node from the open list
             u_node = self.open_list.top()
 
