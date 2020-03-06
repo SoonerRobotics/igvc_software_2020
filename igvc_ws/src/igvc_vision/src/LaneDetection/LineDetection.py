@@ -26,8 +26,8 @@ def process_frame(img):
     crop_img = img[int(rawHeight * float(1-cropRatio)):rawHeight, 0:rawWidth]  # crops off the top 25% of the image
     #cv2.imshow("cropped", crop_img)#median blur
     img_medianBlur = cv2.medianBlur(crop_img,7)
-    cv2.namedWindow('img_medianBlur',0)
-    cv2.resizeWindow('img_medianBlur', 640, 480)
+    # cv2.namedWindow('img_medianBlur',0)
+    # cv2.resizeWindow('img_medianBlur', 640, 480)
     #cv2.imshow('img_medianBlur',img_medianBlur)
     img_medianBlur = cv2.cvtColor(img_medianBlur, cv2.COLOR_BGR2HSV)
     #cv2.imshow('img_medianBlur',img_medianBlur)
@@ -46,61 +46,62 @@ def process_frame(img):
     img_topDown = camera_info.convertToFlat(img_gaussianBlur)
     #cv2.imshow("top Down", img_topDown)
         
-    im2, contours, hierarchy = cv2.findContours(img_topDown, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-    min_width = 0
-    max_width = 1000000
-    min_perimeter = 1
-    min_area = 1000
-    min_height = 0
-    max_height = 1000000
-    solidity = [21,100]
-    max_vertex_count = 1000000
-    min_vertex_count = 0
-    min_ratio = 0
-    max_ratio = 10000
-    output = []
+    # im2, contours, hierarchy = cv2.findContours(img_topDown, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    # min_width = 0
+    # max_width = 1000000
+    # min_perimeter = 1
+    # min_area = 1000
+    # min_height = 0
+    # max_height = 1000000
+    # solidity = [21,100]
+    # max_vertex_count = 1000000
+    # min_vertex_count = 0
+    # min_ratio = 0
+    # max_ratio = 10000
+    # output = []
         
-    for n in contours:
-        x, y, w, h = cv2.boundingRect(n)
-        if (w < min_width or w > max_width):
-            continue
-        if (h < min_height or h > max_height):
-            continue
-        area = cv2.contourArea(n)
-        if (area < min_area):
-            continue
-        if (cv2.arcLength(n, True) < min_perimeter):
-            continue
-        hull = cv2.convexHull(n)
-        solid = 100 * area / cv2.contourArea(hull)
-        if (solid < solidity[0] or solid > solidity[1]):
-            continue
-        if (len(n) < min_vertex_count or len(n) > max_vertex_count):
-            continue
-        ratio = (float)(w) / h
-        if (ratio < min_ratio or ratio > max_ratio):
-            continue
-        output.append(n)
+    # for n in contours:
+    #     x, y, w, h = cv2.boundingRect(n)
+    #     if (w < min_width or w > max_width):
+    #         continue
+    #     if (h < min_height or h > max_height):
+    #         continue
+    #     area = cv2.contourArea(n)
+    #     if (area < min_area):
+    #         continue
+    #     if (cv2.arcLength(n, True) < min_perimeter):
+    #         continue
+    #     hull = cv2.convexHull(n)
+    #     solid = 100 * area / cv2.contourArea(hull)
+    #     if (solid < solidity[0] or solid > solidity[1]):
+    #         continue
+    #     if (len(n) < min_vertex_count or len(n) > max_vertex_count):
+    #         continue
+    #     ratio = (float)(w) / h
+    #     if (ratio < min_ratio or ratio > max_ratio):
+    #         continue
+    #     output.append(n)
         
-    #print contours
-    img = cv2.drawContours(img_topDown, output, -1, (0,255,0), 3)
+    # #print contours
+    # img = cv2.drawContours(img_topDown, output, -1, (0,255,0), 3)
         #out.write(img)
-    return img
+    return img_topDown
                           
                                 # press q to quit
        
     
     #out.release()
-# cam = cv2.VideoCapture('test3.avi')
-# ret, img = cam.read()
-# while ret:
-#     ret, img = cam.read()
-#     if not ret:
-#             break
-#     img2 = process_frame(img)
-#     cv2.imshow("final",img2)
-#     if cv2.waitKey(1) & 0xFF == ord('q'): # btw, you need to click the screen first. And then 
-#         break  
-# cam.release()
-# cv2.waitKey(0)
-# cv2.destroyALLWINDOWS()
+cam = cv2.VideoCapture('test3.avi')
+ret, img = cam.read()
+while ret:
+    ret, img = cam.read()
+    if not ret:
+            break
+    cv2.imshow('before',img)
+    img2 = process_frame(img)
+    cv2.imshow("final",img2)
+    if cv2.waitKey(1) & 0xFF == ord('q'): # btw, you need to click the screen first. And then 
+        break  
+cam.release()
+cv2.waitKey(0)
+cv2.destroyALLWINDOWS()
