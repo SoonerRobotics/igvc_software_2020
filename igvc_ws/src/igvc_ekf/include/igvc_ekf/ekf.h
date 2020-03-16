@@ -47,7 +47,7 @@ class EKF
 
 
         // Update functions
-        Eigen::VectorXd get_measurements();
+        Eigen::VectorXd get_measurement_model();
         void update(Eigen::VectorXd z_k);
 
         // Update vars

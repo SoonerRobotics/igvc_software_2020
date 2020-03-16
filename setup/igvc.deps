@@ -1,16 +1,4 @@
 repositories:
-    ../igvc_ws/src/deps/robot_localization:
-        type: git
-        url: https://github.com/cra-ros-pkg/robot_localization.git
-        version: melodic-devel
-    ../igvc_ws/src/deps/geographic_info:
-        type: git
-        url: https://github.com/ros-geographic-info/geographic_info.git
-        version: master
-    ../igvc_ws/src/deps/unique_identifiers:
-        type: git
-        url: https://github.com/ros-geographic-info/unique_identifier.git
-        version: master
     ../igvc_ws/src/deps/ydlidar_ros:
         type: git
         url: https://github.com/YDLIDAR/ydlidar_ros

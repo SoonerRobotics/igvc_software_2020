@@ -16,7 +16,7 @@ ekf_pose_csv_data = ""
 def plot_x(msg):
     global counter
     if counter % 10 == 0:
-        plt.figure(1)
+        # plt.figure(1)
         stamp = msg.header.stamp
         time = stamp.secs + stamp.nsecs * 1e-9
         # plt.plot(msg.x, msg.y, '*')
@@ -93,6 +93,6 @@ if __name__ == '__main__':
     csv_file = open(pkg_path + "/data/ground_truth.csv", "w")
     csv_file.close()
 
-    plt.ion()
-    plt.show()
+    # plt.ion()
+    # plt.show()
     rospy.spin()
