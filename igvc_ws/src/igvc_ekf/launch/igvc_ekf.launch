@@ -6,7 +6,4 @@
     <!-- EKF Data Plotter -->
     <node pkg="igvc_ekf" type="ekf_plotter.py" name="ekf_plotter" output="screen" />
 
-    <!-- Sensor Data Node -->
-    <node pkg="igvc_ekf" type="ekf_sensor_spoof.py" name="ekf_sensor_spoof" output="screen" />
-
 </launch>
