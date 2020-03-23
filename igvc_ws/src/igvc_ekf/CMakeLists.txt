@@ -13,6 +13,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   roslib
+  sensor_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -107,7 +108,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
    INCLUDE_DIRS include
 #  LIBRARIES igvc_ekf
-   CATKIN_DEPENDS igvc_msgs roscpp rospy std_msgs roslib
+   CATKIN_DEPENDS igvc_msgs roscpp rospy std_msgs roslib sensor_msgs
 #  DEPENDS system_lib
 )
 

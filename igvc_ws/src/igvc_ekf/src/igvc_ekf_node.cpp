@@ -6,12 +6,13 @@
 #include <geometry_msgs/Vector3.h>
 #include <std_msgs/Float64.h>
 #include <ros/package.h>
+#include <sensor_msgs/Imu.h>
+#include <tf/transform_datatypes.h>
 
 #include "igvc_ekf/ekf.h"
 #include "igvc_msgs/EKFState.h"
 #include "igvc_msgs/EKFConvergence.h"
 #include "igvc_msgs/gps.h"
-#include "igvc_msgs/imuodom.h"
 #include "igvc_msgs/velocity.h"
 #include "igvc_msgs/EKFService.h"
 #include "igvc_msgs/motors.h"
@@ -150,21 +151,28 @@ void updateVelocity(const igvc_msgs::velocity::ConstPtr& vel_msg)
     vel_file << data;
 }
 
-void updateIMU(const igvc_msgs::imuodom::ConstPtr& imu_msg)
+void updateIMU(const sensor_msgs::Imu::ConstPtr& imu_msg)
 {
-    z(10) = imu_msg->acceleration;
+    z(10) = imu_msg->linear_acceleration.x;
 
     // Show that the acceleration and heading have been updated
     data_init |= (1 << 2);
 
-    double deg_hdg = radiansToDegrees(imu_msg->heading);
+    tf::Quaternion q(imu_msg->orientation.w, imu_msg->orientation.x, imu_msg->orientation.y, imu_msg->orientation.z);
+    tf::Matrix3x3 m(q);
+    double roll, pitch, yaw;
+    m.getRPY(roll, pitch, yaw);
+    std::cout << roll << " -- " << pitch << " -- " << yaw << std::endl;
+
+    // HACK: For some reason, pitch is the yaw from the IMU in the simulator
+    double deg_hdg = radiansToDegrees(pitch);
 
     if(last_heading < -1000)
     {
         last_heading = deg_hdg;
     }
 
-    z(7) = degreesToRadians(angleDiff(last_heading, deg_hdg)) / 0.02;
+    z(7) = degreesToRadians(angleDiff(last_heading, deg_hdg)) / 0.02;   // TODO: replace with angular velocity from IMU once coordinates are established better
     z(5) += degreesToRadians(angleDiff(last_heading, deg_hdg)); // Update local heading from change to global heading
     z(2) = degreesToRadians(deg_hdg);                 // Update global heading
     last_heading = deg_hdg;
