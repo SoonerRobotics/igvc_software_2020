@@ -3,51 +3,24 @@
 
 EKF::EKF()
 {
-    // set the covariance matrix to 0.8 identically
+    // set the covariance matrix to the identity matrix
     this->P_k.setIdentity(11, 11);
-    this->P_k *= 0.9;
+    this->P_k *= 1.25;
 
     // Define the process noise
     this->Q_k.setIdentity(11, 11);
-    this->Q_k *= 0.4;
+    this->Q_k *= 1.3;
 
     // Define the measurement noise
-    this->R_k.setIdentity(9, 9) * 0.7;
+    this->R_k.setIdentity(11, 11);
     this->R_k(0, 0) = 3.395864;
     this->R_k(1, 1) = 4.571665;
+    this->R_k(3, 3) = 2;
+    this->R_k(4, 4) = 2;
+    this->R_k(5, 5) = 2;
 
     // Define the measurement model
-    this->H_k.setZero(9, 11);
-
-    // Lat
-    this->H_k(0, 0) = 1;
-
-    // Lon
-    this->H_k(1, 1) = 1;
-
-    // Velocity
-    this->H_k(2, 8) = 0.5;
-    this->H_k(2, 9) = 0.5;
-
-    // accel
-    this->H_k(3, 10) = 1;
-
-    // global heading
-    this->H_k(4, 2) = 1;
-
-    // local heading
-    this->H_k(5, 5) = 1;
-
-    // angular velocity
-    this->H_k(6, 7) = 1;
-    //this->H_k(6, 8) = -(WHEEL_RADIUS / WHEELBASE_LEN);
-    //this->H_k(6, 9) = WHEEL_RADIUS / WHEELBASE_LEN;
-
-    // left velocity
-    this->H_k(7, 8) = 1;
-
-    // right velocity
-    this->H_k(8, 9) = 1;
+    this->H_k.setIdentity(11, 11);
 
     // Initialize the kalman gain
     this->K_k.setZero(11, 9);
@@ -100,16 +73,16 @@ double EKF::get_convergence()
 void EKF::calculate_dynamics(Eigen::VectorXd u_k, double dt)
 {
     // Velocity calculations
-    double velocity = 0.5 * WHEEL_RADIUS * (u_k(0) + u_k(1));
+    double velocity = 0.5 * WHEEL_RADIUS * (x_k(8) + x_k(9));
     double x_dot    = velocity * cos(x_k(5));
     double y_dot    = velocity * sin(x_k(5));
-    double psi_dot  = (WHEEL_RADIUS / WHEELBASE_LEN) * (u_k(0) - u_k(1));
+    double psi_dot  = (WHEEL_RADIUS / WHEELBASE_LEN) * (x_k(8) - x_k(9));
 
     // Position Calculations
     double x     = x_k(3) + x_dot * dt;
     double y     = x_k(4) + y_dot * dt;
     double psi   = x_k(5) - psi_dot * dt;
-    double theta = x_k(2) + psi_dot * dt;
+    double theta = x_k(2) - psi_dot * dt;
 
     // GPS calculations
     double lat = x_k(0) + (x_k(6) * dt) * cos(x_k(2)) / EARTH_RADIUS;
@@ -137,21 +110,6 @@ void EKF::calculate_dynamics(Eigen::VectorXd u_k, double dt)
 
 void EKF::linear_dynamics(Eigen::VectorXd u_k, double dt)
 {
-
-/*
-Matrix([
-    [1, 0, -t*v*sin(theta)/6378137, 0, 0, 0, t*cos(theta)/6378137, 0, 0, 0, 0],
-    [t*v*sin(phi)*sin(theta)/(6378137*cos(phi)**2), 1, t*v*cos(theta)/(6378137*cos(phi)), 0, 0, 0, t*sin(theta)/(6378137*cos(phi)), 0, 0, 0, 0],
-    [0, 0, 1, 0, 0, 0, 0, 0, 0.150375939849624*t, -0.150375939849624*t, 0],
-    [0, 0, 0, 1, 0, -t*(0.0635*l + 0.0635*r)*sin(psi), 0, 0, 0.0635*t*cos(psi), 0.0635*t*cos(psi), 0],
-    [0, 0, 0, 0, 1, t*(0.0635*l + 0.0635*r)*cos(psi), 0, 0, 0.0635*t*sin(psi), 0.0635*t*sin(psi), 0],
-    [0, 0, 0, 0, 0, 1, 0, 0, 0.150375939849624*t, -0.150375939849624*t, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0.0635000000000000, 0.0635000000000000, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0.150375939849624, -0.150375939849624, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0],
-    [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]])
-*/
     double velocity = x_k(6);
     double left_vel = x_k(8);
     double right_vel = x_k(9);
@@ -177,17 +135,17 @@ Matrix([
     F_k(1, 2) = dt * velocity * cos_theta / (EARTH_RADIUS * cos_phi);
     F_k(1, 6) = dt * sin_theta / (EARTH_RADIUS * cos_phi);
 
-    // heading
-    F_k(2, 8) = (WHEEL_RADIUS / WHEELBASE_LEN) * dt;
-    F_k(2, 9) = -(WHEEL_RADIUS / WHEELBASE_LEN) * dt;
+    // global heading
+    F_k(2, 8) = -(WHEEL_RADIUS / WHEELBASE_LEN) * dt;
+    F_k(2, 9) = (WHEEL_RADIUS / WHEELBASE_LEN) * dt;
 
     // X
-    F_k(3, 5) = -dt * (0.5 * WHEEL_RADIUS * (left_vel + right_vel))* sin_psi;
+    F_k(3, 5) = -dt * (0.5 * WHEEL_RADIUS * (left_vel + right_vel)) * sin_psi;
     F_k(3, 8) = 0.5 * WHEEL_RADIUS * dt * cos_psi;
     F_k(3, 9) = 0.5 * WHEEL_RADIUS * dt * cos_psi;
 
     // Y
-    F_k(4, 5) = dt * (0.5 * WHEEL_RADIUS * (left_vel + right_vel))* cos_psi;
+    F_k(4, 5) = dt * (0.5 * WHEEL_RADIUS * (left_vel + right_vel)) * cos_psi;
     F_k(4, 8) = 0.5 * WHEEL_RADIUS * dt * sin_psi;
     F_k(4, 9) = 0.5 * WHEEL_RADIUS * dt * sin_psi;
 
@@ -220,22 +178,10 @@ void EKF::predict(Eigen::VectorXd u_k, double dt)
 
 
 
-Eigen::VectorXd EKF::get_measurements()
+Eigen::VectorXd EKF::get_measurement_model()
 {
-    Eigen::VectorXd measurements;
-    measurements.resize(9);
-
-    measurements(0) = this->x_k(0);
-    measurements(1) = this->x_k(1);
-    measurements(2) = this->x_k(6);//0.5 * (this->x_k(8) + this->x_k(9));
-    measurements(3) = this->x_k(10);
-    measurements(4) = this->x_k(2);
-    measurements(5) = this->x_k(5);
-    measurements(6) = this->x_k(7);
-    measurements(7) = this->x_k(8);
-    measurements(8) = this->x_k(9);
-
-    return measurements;
+    // We compare the measurements, z_k, to the current state as a one-to-one mapping
+    return this->x_k;
 }
 
 
@@ -243,7 +189,7 @@ Eigen::VectorXd EKF::get_measurements()
 void EKF::update(Eigen::VectorXd z_k)
 {
     // Calculate the innovation (the difference between predicted measurements and the actual measurements)
-    this->yk = z_k - get_measurements();
+    this->yk = z_k - get_measurement_model();
 
     // Find the covariance of the innovation
     this->Sk = (this->H_k * this->P_k * this->H_k.transpose()) + this->R_k;

@@ -12,7 +12,7 @@ import numpy as np
 from path_planner.mt_dstar_lite import mt_dstar_lite
 from utilities.dstar_viewer import draw_dstar, setup_pyplot
 
-SHOW_PLOTS = True
+SHOW_PLOTS = False
 
 motor_pub = rospy.Publisher("/igvc/motors_raw", motors, queue_size=10)
 global_path_pub = rospy.Publisher("/igvc/global_path", Path, queue_size=1)
@@ -23,7 +23,7 @@ path_failed = False
 planner = mt_dstar_lite()
 
 # Location when map was made
-map_reference = (0, 0)
+map_reference = (0, 0, 0)
 
 # Localization tracking
 prev_state = (0, 0)  # x, y
@@ -86,7 +86,7 @@ def c_space_callback(c_space):
 
             frontier.remove(pos)
             explored.add(pos[0] * 200 + pos[1])
-            
+
             if pos[0] < 199 and temp_cost_map[(pos[0] + 1) * 200 + pos[1]] != 100 and (pos[0] + 1) * 200 + pos[1] not in explored:
                 frontier.add((pos[0] + 1, pos[1]))
             if pos[0] > 0 and temp_cost_map[(pos[0] - 1) * 200 + pos[1]] != 100 and (pos[0] - 1) * 200 + pos[1] not in explored:
@@ -95,7 +95,7 @@ def c_space_callback(c_space):
                 frontier.add((pos[0], pos[1] + 1))
             if pos[1] > 0 and temp_cost_map[pos[0] * 200 + pos[1] - 1] != 100 and pos[0] * 200 + pos[1] - 1 not in explored:
                 frontier.add((pos[0], pos[1] - 1))
-        
+
         depth += 1
 
     map_reference = (curEKF.x, curEKF.y, curEKF.yaw)
@@ -161,7 +161,7 @@ def make_map(c_space):
 
     if path is not None:
         global_path = Path()
-        
+
         header = Header()
         header.seq = path_seq
         header.stamp = rospy.Time.now()
