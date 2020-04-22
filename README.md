@@ -24,4 +24,7 @@ See our GitHub wiki at https://github.com/SoonerRobotics/igvc_software_2020/wiki
 
 ## Updating dependencies
 
-To update the dependencies in this repo, modify the `setup/igvc.deps` file, and then run `vcstool import < igvc.deps` from the setup folder.
+To update the dependencies in this repo, modify the `setup/igvc.deps` file, and then run `vcs import < igvc.deps` from the setup folder.
+
+## Project Dependencies
+- [vcstool](https://github.com/dirk-thomas/vcstool): we use this to manage all the external github dependencies and ROS packages we need.

@@ -15,7 +15,4 @@
         <rosparam file="$(find igvc_ros_navigation)/planner/base_local_planner_params.yaml" command="load" />
     </node>
 
-    <!-- Run the simulator -->
-    <include file="$(find igvc_ros_navigation)/launch/igvc_robot_config_sim.launch" />
-
 </launch>
